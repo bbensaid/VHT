@@ -1,0 +1,5450 @@
+
+
+==== app/admin/page.tsx ====
+
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Trash2, Upload, Download } from "lucide-react";
+import { Sidebar } from "@/components/sidebar";
+import { Navbar } from "@/components/navbar";
+import { useToast } from "@/components/ui/use-toast";
+import { useDropzone } from "react-dropzone";
+import * as XLSX from "xlsx";
+
+// Type for keyword
+type Keyword = {
+  id?: string;
+  term: string;
+  definition: string;
+};
+
+export default function AdminPage() {
+  const { toast } = useToast();
+  const [keywords, setKeywords] = useState<Keyword[]>([]);
+  const [newKeyword, setNewKeyword] = useState("");
+  const [newDefinition, setNewDefinition] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch keywords on component mount
+  useEffect(() => {
+    fetchKeywords();
+  }, []);
+
+  const fetchKeywords = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch("/api/keywords");
+      if (!response.ok) throw new Error("Failed to fetch keywords");
+      const data = await response.json();
+      setKeywords(data);
+    } catch (error) {
+      console.error("Error fetching keywords:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch keywords",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAddKeyword = async () => {
+    if (!newKeyword.trim() || !newDefinition.trim()) return;
+
+    try {
+      const response = await fetch("/api/keywords", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          term: newKeyword,
+          definition: newDefinition,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to add keyword");
+
+      const data = await response.json();
+      setKeywords([...keywords, data]);
+      setNewKeyword("");
+      setNewDefinition("");
+
+      toast({
+        title: "Success",
+        description: "Keyword added successfully",
+      });
+    } catch (error) {
+      console.error("Error adding keyword:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add keyword",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRemoveKeyword = async (id: string) => {
+    try {
+      const response = await fetch(`/api/keywords/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Failed to delete keyword");
+
+      setKeywords(keywords.filter((keyword) => keyword.id !== id));
+
+      toast({
+        title: "Success",
+        description: "Keyword deleted successfully",
+      });
+    } catch (error) {
+      console.error("Error deleting keyword:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete keyword",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const processCSV = (text: string) => {
+    const results: Keyword[] = [];
+    const lines = text.split("\n");
+
+    lines.forEach((line) => {
+      if (!line.trim()) return;
+
+      const [term, definition] = line.split(",").map((item) => item.trim());
+      if (term && definition) {
+        results.push({ term, definition });
+      }
+    });
+
+    return results;
+  };
+
+  const processExcel = (arrayBuffer: ArrayBuffer) => {
+    const workbook = XLSX.read(arrayBuffer);
+    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+    const data = XLSX.utils.sheet_to_json<{ term: string; definition: string }>(
+      worksheet
+    );
+
+    return data.map((row) => ({
+      term: row.term,
+      definition: row.definition,
+    }));
+  };
+
+  const handleFileUpload = async (files: File[]) => {
+    if (files.length === 0) return;
+
+    const file = files[0];
+    try {
+      let keywords: Keyword[] = [];
+
+      if (file.name.endsWith(".csv")) {
+        const text = await file.text();
+        keywords = processCSV(text);
+      } else if (file.name.endsWith(".xlsx") || file.name.endsWith(".xls")) {
+        const arrayBuffer = await file.arrayBuffer();
+        keywords = processExcel(arrayBuffer);
+      } else {
+        throw new Error("Unsupported file format");
+      }
+
+      if (keywords.length === 0) {
+        throw new Error("No valid keywords found in file");
+      }
+
+      const response = await fetch("/api/keywords", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(keywords),
+      });
+
+      if (!response.ok) throw new Error("Failed to import keywords");
+
+      await fetchKeywords();
+
+      toast({
+        title: "Success",
+        description: `Imported ${keywords.length} keywords successfully`,
+      });
+    } catch (error) {
+      console.error("Error importing keywords:", error);
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error ? error.message : "Failed to import keywords",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const exportKeywords = () => {
+    // Create worksheet
+    const worksheet = XLSX.utils.json_to_sheet(
+      keywords.map((k) => ({ term: k.term, definition: k.definition }))
+    );
+
+    // Create workbook
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Keywords");
+
+    // Generate Excel file
+    XLSX.writeFile(workbook, "keywords.xlsx");
+  };
+
+  const { getRootProps, getInputProps } = useDropzone({
+    onDrop: handleFileUpload,
+    accept: {
+      "text/csv": [".csv"],
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
+        ".xlsx",
+      ],
+      "application/vnd.ms-excel": [".xls"],
+    },
+    multiple: false,
+  });
+
+  return (
+    <div className="flex h-screen bg-background">
+      <Sidebar />
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <Navbar />
+        <main className="flex-1 overflow-auto p-4">
+          <div className="container mx-auto">
+            <h1 className="text-2xl font-bold mb-6">Admin Dashboard</h1>
+
+            <Tabs defaultValue="keywords">
+              <TabsList className="mb-4">
+                <TabsTrigger value="keywords">Keyword Management</TabsTrigger>
+                <TabsTrigger value="blog">Blog Management</TabsTrigger>
+                <TabsTrigger value="settings">Settings</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="keywords" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Add New Keyword</CardTitle>
+                    <CardDescription>
+                      Add a new keyword and its definition to the dictionary
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="keyword">Keyword</Label>
+                        <Input
+                          id="keyword"
+                          value={newKeyword}
+                          onChange={(e) => setNewKeyword(e.target.value)}
+                          placeholder="Enter keyword"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="definition">Definition</Label>
+                        <Textarea
+                          id="definition"
+                          value={newDefinition}
+                          onChange={(e) => setNewDefinition(e.target.value)}
+                          placeholder="Enter definition"
+                          rows={3}
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                  <CardFooter>
+                    <Button onClick={handleAddKeyword}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Keyword
+                    </Button>
+                  </CardFooter>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Import/Export Keywords</CardTitle>
+                    <CardDescription>
+                      Upload a CSV or Excel file with keywords and definitions
+                      or export the current dictionary
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-col gap-4">
+                      <div
+                        {...getRootProps()}
+                        className="border-2 border-dashed rounded-md p-6 text-center cursor-pointer hover:bg-muted/50 transition-colors"
+                      >
+                        <input {...getInputProps()} />
+                        <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground">
+                          Drag & drop a CSV or Excel file here, or click to
+                          select a file
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          File should have columns: term, definition
+                        </p>
+                      </div>
+
+                      <div className="flex justify-end">
+                        <Button
+                          variant="outline"
+                          onClick={exportKeywords}
+                          disabled={keywords.length === 0}
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Export Keywords
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                      <CardTitle>Keyword Dictionary</CardTitle>
+                      <CardDescription>
+                        Manage your healthcare terminology dictionary
+                      </CardDescription>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoading ? (
+                      <div className="flex justify-center p-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                      </div>
+                    ) : keywords.length === 0 ? (
+                      <div className="text-center p-8 text-muted-foreground">
+                        <p>
+                          No keywords found. Add some keywords or import from a
+                          file.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="border rounded-md">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Keyword</TableHead>
+                              <TableHead>Definition</TableHead>
+                              <TableHead className="w-[100px]">
+                                Actions
+                              </TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {keywords.map((keyword) => (
+                              <TableRow key={keyword.id}>
+                                <TableCell className="font-medium">
+                                  {keyword.term}
+                                </TableCell>
+                                <TableCell>{keyword.definition}</TableCell>
+                                <TableCell>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() =>
+                                      handleRemoveKeyword(keyword.id!)
+                                    }
+                                  >
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="blog">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Blog Management</CardTitle>
+                    <CardDescription>
+                      Manage blog posts for the healthcare reform portal
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex justify-end mb-4">
+                      <Button asChild>
+                        <a href="/blog/new">Create New Blog Post</a>
+                      </Button>
+                    </div>
+                    <p>
+                      Blog management will be implemented in a future update.
+                    </p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="settings">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Application Settings</CardTitle>
+                    <CardDescription>
+                      Configure application settings
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p>Settings will be implemented in a future update.</p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+
+==== app/analytics/page.tsx ====
+
+"use client";
+
+import { Sidebar } from "@/components/sidebar";
+import { Navbar } from "@/components/navbar";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+export default function AnalyticsPage() {
+  return (
+    <div className="flex h-screen bg-background">
+      <Sidebar />
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <Navbar />
+        <main className="flex-1 overflow-auto p-4">
+          <div className="container mx-auto">
+            <h1 className="text-2xl font-bold mb-6">Analytics</h1>
+
+            <Tabs defaultValue="overview">
+              <TabsList className="mb-6">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="documents">Documents</TabsTrigger>
+                <TabsTrigger value="users">Users</TabsTrigger>
+                <TabsTrigger value="keywords">Keywords</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="overview">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Document Analysis</CardTitle>
+                      <CardDescription>
+                        Document uploads and views over time
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="h-80">
+                      <div className="w-full h-full flex items-center justify-center bg-muted/30 rounded-md">
+                        <p className="text-muted-foreground">
+                          Chart visualization will be implemented
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>User Engagement</CardTitle>
+                      <CardDescription>
+                        User activity and engagement metrics
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="h-80">
+                      <div className="w-full h-full flex items-center justify-center bg-muted/30 rounded-md">
+                        <p className="text-muted-foreground">
+                          Chart visualization will be implemented
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Keyword Usage</CardTitle>
+                      <CardDescription>
+                        Most frequently highlighted keywords
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="h-80">
+                      <div className="w-full h-full flex items-center justify-center bg-muted/30 rounded-md">
+                        <p className="text-muted-foreground">
+                          Chart visualization will be implemented
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Comment Activity</CardTitle>
+                      <CardDescription>
+                        Comment frequency and trends
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="h-80">
+                      <div className="w-full h-full flex items-center justify-center bg-muted/30 rounded-md">
+                        <p className="text-muted-foreground">
+                          Chart visualization will be implemented
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="documents">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Document Analytics</CardTitle>
+                    <CardDescription>
+                      Detailed document usage statistics
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-8">
+                      <div>
+                        <h3 className="text-lg font-medium mb-4">
+                          Most Viewed Documents
+                        </h3>
+                        <div className="space-y-4">
+                          {[
+                            {
+                              title: "Vermont Healthcare Reform Act 2023",
+                              views: 245,
+                              keywords: 32,
+                            },
+                            {
+                              title: "Green Mountain Care Board Annual Report",
+                              views: 187,
+                              keywords: 28,
+                            },
+                            {
+                              title: "Medicaid Expansion Analysis",
+                              views: 156,
+                              keywords: 24,
+                            },
+                            {
+                              title: "Rural Healthcare Access Initiative",
+                              views: 134,
+                              keywords: 19,
+                            },
+                            {
+                              title: "Payment Reform White Paper",
+                              views: 112,
+                              keywords: 22,
+                            },
+                          ].map((doc, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center justify-between p-3 border rounded-md"
+                            >
+                              <div>
+                                <p className="font-medium">{doc.title}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  Keywords: {doc.keywords}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-bold">{doc.views}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  views
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <h3 className="text-lg font-medium mb-4">
+                          Document Upload Trends
+                        </h3>
+                        <div className="h-60 w-full flex items-center justify-center bg-muted/30 rounded-md">
+                          <p className="text-muted-foreground">
+                            Chart visualization will be implemented
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="users">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>User Analytics</CardTitle>
+                    <CardDescription>
+                      User engagement and activity metrics
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p>
+                      User analytics will be implemented in a future update.
+                    </p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="keywords">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Keyword Analytics</CardTitle>
+                    <CardDescription>
+                      Keyword usage and highlighting statistics
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p>
+                      Keyword analytics will be implemented in a future update.
+                    </p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+
+==== app/api/blog/[id]/route.ts ====
+
+import { NextResponse } from "next/server";
+import { BlogService } from "@/services/blog-service";
+import prisma from "@/lib/prisma";
+
+export async function GET(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    // Validate ID parameter
+    const id = params.id;
+    if (!id) {
+      return NextResponse.json(
+        { error: "Blog post ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const post = await BlogService.getBlogPostById(id);
+
+    if (!post) {
+      return NextResponse.json(
+        { error: "Blog post not found", id },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(post);
+  } catch (error) {
+    console.error("Error fetching blog post:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to fetch blog post",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    // Validate ID parameter
+    const id = params.id;
+    if (!id) {
+      return NextResponse.json(
+        { error: "Blog post ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // Validate request content type
+    const contentType = request.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      return NextResponse.json(
+        { error: "Content-Type must be application/json" },
+        { status: 400 }
+      );
+    }
+
+    const data = await request.json();
+
+    // Check if post exists
+    const existingPost = await BlogService.getBlogPostById(id);
+    if (!existingPost) {
+      return NextResponse.json(
+        { error: "Blog post not found", id },
+        { status: 404 }
+      );
+    }
+
+    // If slug is being updated, check if it conflicts with another post
+    if (data.slug && data.slug !== existingPost.slug) {
+      const slugExists = await prisma.blogPost.findFirst({
+        where: {
+          slug: data.slug.toLowerCase().trim(),
+          id: { not: id },
+        },
+      });
+
+      if (slugExists) {
+        return NextResponse.json(
+          { error: "A blog post with this slug already exists" },
+          { status: 409 }
+        );
+      }
+    }
+
+    const updatedPost = await BlogService.updateBlogPost(id, data);
+    return NextResponse.json(updatedPost);
+  } catch (error) {
+    console.error("Error updating blog post:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to update blog post",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    // Validate ID parameter
+    const id = params.id;
+    if (!id) {
+      return NextResponse.json(
+        { error: "Blog post ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // Check if post exists
+    const existingPost = await BlogService.getBlogPostById(id);
+    if (!existingPost) {
+      return NextResponse.json(
+        { error: "Blog post not found", id },
+        { status: 404 }
+      );
+    }
+
+    await BlogService.removeBlogPost(id);
+    return NextResponse.json({ success: true, id });
+  } catch (error) {
+    console.error("Error deleting blog post:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to delete blog post",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
+  }
+}
+
+
+==== app/api/blog/route.ts ====
+
+import { NextResponse } from "next/server";
+import { BlogService } from "@/services/blog-service";
+
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const slug = searchParams.get("slug");
+
+    if (slug) {
+      const post = await BlogService.getBlogPostBySlug(slug);
+
+      if (!post) {
+        return NextResponse.json(
+          { error: "Blog post not found", slug },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json(post);
+    }
+
+    // If no slug is provided, return all published posts
+    const posts = await BlogService.getBlogPosts();
+    const publishedPosts = posts.filter((post) => post.published);
+    return NextResponse.json(publishedPosts);
+  } catch (error) {
+    console.error("Error fetching blog posts:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to fetch blog posts",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    // Validate request content type
+    const contentType = request.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      return NextResponse.json(
+        { error: "Content-Type must be application/json" },
+        { status: 400 }
+      );
+    }
+
+    const data = await request.json();
+
+    // Validate required fields
+    if (!data.title || typeof data.title !== "string") {
+      return NextResponse.json(
+        { error: "Blog post title is required and must be a string" },
+        { status: 400 }
+      );
+    }
+
+    if (!data.slug || typeof data.slug !== "string") {
+      return NextResponse.json(
+        { error: "Blog post slug is required and must be a string" },
+        { status: 400 }
+      );
+    }
+
+    if (!data.content || typeof data.content !== "string") {
+      return NextResponse.json(
+        { error: "Blog post content is required and must be a string" },
+        { status: 400 }
+      );
+    }
+
+    // Check if slug already exists
+    const existingPost = await BlogService.getBlogPostBySlug(data.slug);
+    if (existingPost) {
+      return NextResponse.json(
+        { error: "A blog post with this slug already exists" },
+        { status: 409 }
+      );
+    }
+
+    const post = await BlogService.addBlogPost(
+      data.title,
+      data.slug,
+      data.content,
+      data.excerpt || "",
+      data.author || "Anonymous",
+      data.published !== undefined ? Boolean(data.published) : false
+    );
+
+    return NextResponse.json(post);
+  } catch (error) {
+    console.error("Error creating blog post:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to create blog post",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
+  }
+}
+
+
+==== app/api/comments/[id]/route.ts ====
+
+import { NextResponse } from "next/server";
+import { CommentService } from "@/services/comment-service";
+
+export async function GET(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    // Validate ID parameter
+    const id = params.id;
+    if (!id) {
+      return NextResponse.json(
+        { error: "Comment ID is required" },
+        { status: 400 }
+      );
+    }
+
+    const comment = await CommentService.getCommentById(id);
+    if (!comment) {
+      return NextResponse.json({ error: "Comment not found" }, { status: 404 });
+    }
+
+    return NextResponse.json(comment);
+  } catch (error) {
+    console.error("Error fetching comment:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to fetch comment",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    // Validate ID parameter
+    const id = params.id;
+    if (!id) {
+      return NextResponse.json(
+        { error: "Comment ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // Check if comment exists before deleting
+    const comment = await CommentService.getCommentById(id);
+    if (!comment) {
+      return NextResponse.json({ error: "Comment not found" }, { status: 404 });
+    }
+
+    await CommentService.removeComment(id);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting comment:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to delete comment",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
+  }
+}
+
+
+==== app/api/comments/route.ts ====
+
+import { NextResponse } from "next/server";
+import { CommentService } from "@/services/comment-service";
+
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const documentName = searchParams.get("document");
+    const page = searchParams.get("page");
+
+    let comments;
+
+    if (documentName && page) {
+      const pageNum = Number.parseInt(page, 10);
+      if (isNaN(pageNum)) {
+        return NextResponse.json(
+          { error: "Page parameter must be a valid number" },
+          { status: 400 }
+        );
+      }
+      comments = await CommentService.getComments(documentName, pageNum);
+    } else if (documentName) {
+      comments = await CommentService.getComments(documentName);
+    } else {
+      comments = await CommentService.getComments();
+    }
+
+    return NextResponse.json(comments);
+  } catch (error) {
+    console.error("Error fetching comments:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to fetch comments",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    // Validate request content type
+    const contentType = request.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      return NextResponse.json(
+        { error: "Content-Type must be application/json" },
+        { status: 400 }
+      );
+    }
+
+    const data = await request.json();
+
+    // Validate required fields
+    if (!data.content || typeof data.content !== "string") {
+      return NextResponse.json(
+        { error: "Comment content is required and must be a string" },
+        { status: 400 }
+      );
+    }
+
+    if (!data.documentName || typeof data.documentName !== "string") {
+      return NextResponse.json(
+        { error: "Document name is required and must be a string" },
+        { status: 400 }
+      );
+    }
+
+    // Validate page number if provided
+    if (data.documentPage !== undefined) {
+      const pageNum = Number(data.documentPage);
+      if (isNaN(pageNum) || pageNum < 1) {
+        return NextResponse.json(
+          { error: "Document page must be a positive number" },
+          { status: 400 }
+        );
+      }
+    }
+
+    const comment = await CommentService.addComment(
+      data.content,
+      data.documentName,
+      data.documentPage || 1,
+      data.author || "Anonymous"
+    );
+
+    return NextResponse.json(comment);
+  } catch (error) {
+    console.error("Error creating comment:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to create comment",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
+  }
+}
+
+
+==== app/api/keywords/[id]/route.ts ====
+
+import { NextResponse } from "next/server";
+import { KeywordService } from "@/services/keyword-service";
+
+export async function DELETE(
+  request: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    // Validate ID parameter
+    const id = params.id;
+    if (!id) {
+      return NextResponse.json(
+        { error: "Keyword ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // Check if keyword exists before deleting
+    const keyword = await KeywordService.getKeywordById(id);
+    if (!keyword) {
+      return NextResponse.json({ error: "Keyword not found" }, { status: 404 });
+    }
+
+    await KeywordService.removeKeyword(id);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting keyword:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to delete keyword",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
+  }
+}
+
+
+==== app/api/keywords/route.ts ====
+
+import { NextResponse } from "next/server";
+import { KeywordService } from "@/services/keyword-service";
+
+export async function GET() {
+  try {
+    const keywords = await KeywordService.getKeywords();
+    return NextResponse.json(keywords);
+  } catch (error) {
+    console.error("Error fetching keywords:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to fetch keywords",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    // Validate request content type
+    const contentType = request.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      return NextResponse.json(
+        { error: "Content-Type must be application/json" },
+        { status: 400 }
+      );
+    }
+
+    const data = await request.json();
+
+    if (Array.isArray(data)) {
+      // Bulk create/update
+      // Validate array items
+      for (const item of data) {
+        if (
+          !item.term ||
+          typeof item.term !== "string" ||
+          !item.definition ||
+          typeof item.definition !== "string"
+        ) {
+          return NextResponse.json(
+            {
+              error: "Each keyword must have a term and definition as strings",
+            },
+            { status: 400 }
+          );
+        }
+      }
+
+      // Import keywords
+      const keywords = await KeywordService.importKeywords(data);
+      return NextResponse.json(keywords);
+    } else {
+      // Single create/update
+      // Validate single item
+      if (
+        !data.term ||
+        typeof data.term !== "string" ||
+        !data.definition ||
+        typeof data.definition !== "string"
+      ) {
+        return NextResponse.json(
+          { error: "Keyword must have a term and definition as strings" },
+          { status: 400 }
+        );
+      }
+
+      const keyword = await KeywordService.addKeyword(
+        data.term,
+        data.definition
+      );
+      return NextResponse.json(keyword);
+    }
+  } catch (error) {
+    console.error("Error creating/updating keywords:", error);
+    return NextResponse.json(
+      {
+        error: "Failed to create/update keywords",
+        details: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 }
+    );
+  }
+}
+
+
+==== app/auth/signin/loading.tsx ====
+
+export default function Loading() {
+  return null;
+}
+
+
+==== app/auth/signin/page.tsx ====
+
+"use client";
+
+import type React from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { AlertCircle } from "lucide-react";
+import { useAuth } from "@/contexts/auth-context";
+
+export default function SignIn() {
+  const router = useRouter();
+  const { login } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const success = await login(email, password);
+
+      if (!success) {
+        setError("Invalid email or password");
+        setIsLoading(false);
+        return;
+      }
+
+      router.push("/");
+      router.refresh();
+    } catch (error) {
+      console.error("Sign in error:", error);
+      setError("An error occurred. Please try again.");
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-muted/30 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold">Sign in</CardTitle>
+          <CardDescription>
+            Enter your credentials to access the Vermont Healthcare Reform
+            Portal
+          </CardDescription>
+        </CardHeader>
+        <form onSubmit={handleSubmit}>
+          <CardContent className="space-y-4">
+            {error && (
+              <div className="flex items-center gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4" />
+                <p>{error}</p>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="name@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoComplete="email"
+              />
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Password</Label>
+              </div>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+              />
+            </div>
+          </CardContent>
+          <CardFooter>
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? "Signing in..." : "Sign in"}
+            </Button>
+          </CardFooter>
+        </form>
+      </Card>
+    </div>
+  );
+}
+
+
+==== app/blog/[slug]/page.tsx ====
+
+"use client";
+
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
+import { Sidebar } from "@/components/sidebar";
+import { Navbar } from "@/components/navbar";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { format } from "date-fns";
+import { Calendar, User, ArrowLeft } from "lucide-react";
+import Link from "next/link";
+import ReactMarkdown from "react-markdown";
+
+type BlogPost = {
+  id: string;
+  title: string;
+  slug: string;
+  content: string;
+  author: string;
+  createdAt: string;
+};
+
+export default function BlogPostPage() {
+  const params = useParams<{ slug: string }>();
+  const [post, setPost] = useState<BlogPost | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchPost = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const response = await fetch(
+          `/api/blog?slug=${encodeURIComponent(params.slug)}`
+        );
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            throw new Error("Blog post not found");
+          }
+          throw new Error("Failed to fetch blog post");
+        }
+
+        const data = await response.json();
+        setPost(data);
+      } catch (error) {
+        console.error("Error fetching blog post:", error);
+        setError(error instanceof Error ? error.message : "An error occurred");
+
+        // Check if we have a matching sample post in our initial data
+        const samplePosts = [
+          {
+            id: "1",
+            title: "Understanding Vermont's Healthcare Reform Initiatives",
+            slug: "understanding-vermont-healthcare-reform",
+            content: `
+# Understanding Vermont's Healthcare Reform Initiatives
+
+Vermont has been at the forefront of healthcare reform in the United States, implementing innovative approaches to improve access, quality, and affordability of healthcare services for its residents.
+
+## Key Initiatives
+
+### Green Mountain Care Board
+
+The Green Mountain Care Board (GMCB) was established in 2011 as an independent group to oversee the development of health care policy in Vermont. The board has regulatory authority over healthcare system costs and has been instrumental in implementing various reform initiatives.
+
+### All-Payer Model
+
+Vermont's All-Payer Model is a unique approach that brings together Medicare, Medicaid, and commercial insurers to pay for healthcare in the same way. This model aims to:
+
+- Shift from fee-for-service to value-based payments
+- Improve population health outcomes
+- Reduce healthcare costs
+- Enhance the patient experience
+
+### Blueprint for Health
+
+The Blueprint for Health is a state-led initiative that works to integrate care across the healthcare spectrum. It focuses on:
+
+- Patient-centered medical homes
+- Community health teams
+- Self-management support programs
+- Health information technology
+
+## Challenges and Opportunities
+
+Despite significant progress, Vermont's healthcare reform efforts face several challenges:
+
+1. **Rural Access**: Ensuring access to healthcare services in rural areas remains difficult
+2. **Workforce Shortages**: Addressing shortages of healthcare providers, particularly in primary care
+3. **Cost Containment**: Continuing to control healthcare costs while maintaining quality
+4. **Integration**: Further integrating physical health, mental health, and substance use disorder services
+
+## Looking Ahead
+
+As Vermont continues its healthcare reform journey, several opportunities exist:
+
+- Expanding telehealth services to reach underserved populations
+- Strengthening primary care infrastructure
+- Enhancing data analytics capabilities to drive improvement
+- Developing innovative payment models that reward value over volume
+
+Vermont's experience offers valuable lessons for other states considering healthcare reform initiatives. By focusing on collaboration, innovation, and a commitment to improving population health, Vermont continues to lead the way in transforming healthcare delivery and financing.
+          `,
+            author: "Jane Smith",
+            createdAt: new Date().toISOString(),
+          },
+          {
+            id: "2",
+            title: "The Role of Green Mountain Care Board in Healthcare Policy",
+            slug: "role-of-green-mountain-care-board",
+            content: `
+# The Role of Green Mountain Care Board in Healthcare Policy
+
+The Green Mountain Care Board (GMCB) plays a pivotal role in shaping healthcare policy in Vermont. Established in 2011, the board serves as an independent regulatory entity with broad authority over the state's healthcare system.
+
+## Board Composition and Structure
+
+The GMCB consists of five members appointed by the governor and confirmed by the state senate. Members serve six-year terms and bring diverse expertise in healthcare policy, finance, and delivery systems. The board is supported by a professional staff with backgrounds in data analysis, law, and healthcare administration.
+
+## Key Responsibilities
+
+### Rate Review
+
+One of the GMCB's primary functions is reviewing and approving health insurance premium rates. This process involves:
+
+- Analyzing proposed rate increases from insurers
+- Evaluating the reasonableness of administrative costs
+- Assessing the impact on consumers and the market
+- Making adjustments to ensure rates are fair and affordable
+
+### Hospital Budget Review
+
+The board has authority to review and approve hospital budgets, which includes:
+
+- Setting targets for hospital revenue growth
+- Evaluating capital expenditure plans
+- Monitoring compliance with approved budgets
+- Implementing corrective actions when necessary
+
+### Certificate of Need
+
+The GMCB oversees the certificate of need (CON) process, which requires healthcare facilities to obtain approval before making significant capital investments or offering new services. This helps prevent unnecessary duplication of services and controls healthcare costs.
+
+### All-Payer Model Implementation
+
+The board plays a central role in implementing Vermont's All-Payer Model, which aims to align payment methodologies across Medicare, Medicaid, and commercial insurers. This includes:
+
+- Setting quality and cost targets
+- Monitoring performance metrics
+- Adjusting payment methodologies as needed
+- Reporting outcomes to state and federal partners
+
+## Impact on Healthcare Reform
+
+The GMCB has contributed significantly to Vermont's healthcare reform efforts by:
+
+1. **Controlling Costs**: Through rate review and budget oversight, the board has helped moderate healthcare cost growth
+2. **Improving Transparency**: Public hearings and data reporting have enhanced transparency in healthcare pricing and quality
+3. **Promoting Innovation**: The board has supported pilot programs and payment reforms that incentivize value over volume
+4. **Enhancing Coordination**: By aligning incentives across payers, the GMCB has fostered greater coordination in the healthcare system
+
+## Challenges and Criticisms
+
+Despite its accomplishments, the GMCB faces several challenges:
+
+- Balancing regulatory oversight with market flexibility
+- Addressing the unique needs of rural providers
+- Coordinating with other state and federal agencies
+- Measuring and demonstrating the impact of its policies
+
+## Future Directions
+
+Looking ahead, the GMCB is likely to focus on:
+
+- Further integration of mental health and substance use disorder services
+- Expanding value-based payment models
+- Addressing healthcare workforce shortages
+- Leveraging data analytics to drive improvement
+
+The Green Mountain Care Board remains a cornerstone of Vermont's approach to healthcare reform, serving as a model for other states seeking to enhance regulatory oversight and promote system-wide transformation.
+          `,
+            author: "John Doe",
+            createdAt: new Date(
+              Date.now() - 7 * 24 * 60 * 60 * 1000
+            ).toISOString(),
+          },
+          {
+            id: "3",
+            title: "Medicaid Expansion: Benefits and Challenges",
+            slug: "medicaid-expansion-benefits-challenges",
+            content: `
+# Medicaid Expansion: Benefits and Challenges
+
+Medicaid expansion has been a cornerstone of healthcare reform efforts in Vermont and across the United States. This analysis examines the benefits, challenges, and future outlook of Medicaid expansion in Vermont.
+
+## Background
+
+Medicaid is a joint federal-state program that provides health coverage to eligible low-income adults, children, pregnant women, elderly adults, and people with disabilities. The Affordable Care Act (ACA) of 2010 expanded Medicaid eligibility to include adults with incomes up to 138% of the federal poverty level.
+
+Vermont was one of the first states to implement Medicaid expansion, beginning in 2014. The state had already established a strong foundation for public health insurance through its Vermont Health Access Plan (VHAP) and other programs.
+
+## Benefits of Medicaid Expansion
+
+### Increased Coverage
+
+Medicaid expansion has significantly reduced the uninsured rate in Vermont. Prior to expansion, approximately 7% of Vermonters lacked health insurance. By 2019, this rate had dropped to less than 4%, one of the lowest in the nation.
+
+### Improved Health Outcomes
+
+Research has shown that Medicaid expansion is associated with:
+
+- Earlier detection of chronic conditions
+- Improved management of diabetes, hypertension, and other chronic diseases
+- Reduced mortality rates
+- Increased access to mental health and substance use disorder treatment
+
+### Economic Benefits
+
+Medicaid expansion has provided economic benefits to Vermont, including:
+
+- Increased federal funding flowing into the state
+- Reduced uncompensated care costs for hospitals
+- Job creation in the healthcare sector
+- Improved financial security for low-income families
+
+### Rural Healthcare Support
+
+In rural areas of Vermont, Medicaid expansion has helped sustain healthcare facilities that might otherwise struggle financially. This has preserved access to care in underserved communities.
+
+## Challenges
+
+### Fiscal Sustainability
+
+While the federal government initially covered 100% of the costs for newly eligible Medicaid enrollees, this match has gradually decreased to 90%. Vermont must allocate state funds to cover the remaining 10%, which presents budgetary challenges.
+
+### Provider Participation
+
+Medicaid reimbursement rates are typically lower than those of private insurance, which can discourage provider participation. This can limit access to care for Medicaid beneficiaries, particularly for specialty services.
+
+### Administrative Complexity
+
+The Medicaid program involves complex eligibility rules, enrollment procedures, and reporting requirements. This administrative burden affects both the state and healthcare providers.
+
+### Workforce Shortages
+
+Vermont faces healthcare workforce shortages, particularly in primary care, mental health, and certain specialties. Medicaid expansion has increased demand for services, exacerbating these shortages.
+
+## Future Outlook
+
+As Vermont continues to implement and refine Medicaid expansion, several key considerations will shape its future:
+
+### Integration with Payment Reform
+
+Vermont is working to integrate Medicaid into broader payment reform initiatives, such as the All-Payer Model. This aims to align incentives across payers and promote value-based care.
+
+### Addressing Social Determinants of Health
+
+There is growing recognition that health outcomes are influenced by social factors such as housing, food security, and transportation. Future Medicaid initiatives may incorporate strategies to address these social determinants of health.
+
+### Telehealth Expansion
+
+The COVID-19 pandemic accelerated the adoption of telehealth services. Continued expansion of telehealth could improve access to care for Medicaid beneficiaries, particularly in rural areas.
+
+### Federal Policy Changes
+
+Changes in federal Medicaid policy could significantly impact Vermont's program. The state must remain adaptable to potential changes in funding, eligibility requirements, or program structure.
+
+## Conclusion
+
+Medicaid expansion has been a transformative component of Vermont's healthcare reform efforts, significantly reducing the uninsured rate and improving access to care. While challenges remain, particularly related to fiscal sustainability and workforce capacity, the program continues to evolve to meet the healthcare needs of Vermonters.
+
+The experience of Vermont offers valuable insights for other states considering or implementing Medicaid expansion, highlighting both the benefits and the ongoing challenges of expanding public health insurance coverage.
+          `,
+            author: "Sarah Johnson",
+            createdAt: new Date(
+              Date.now() - 14 * 24 * 60 * 60 * 1000
+            ).toISOString(),
+          },
+        ];
+
+        // Try to find a matching sample post
+        const matchingPost = samplePosts.find((p) => p.slug === params.slug);
+        if (matchingPost) {
+          setPost(matchingPost);
+          setError(null); // Clear error if we found a matching post
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPost();
+  }, [params.slug]);
+
+  return (
+    <div className="flex h-screen bg-background">
+      <Sidebar />
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <Navbar />
+        <main className="flex-1 overflow-auto p-4">
+          <div className="container mx-auto max-w-3xl">
+            <Button variant="ghost" className="mb-4" asChild>
+              <Link href="/blog">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Blog
+              </Link>
+            </Button>
+
+            {isLoading ? (
+              <div className="flex justify-center p-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              </div>
+            ) : error ? (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <p className="text-muted-foreground">{error}</p>
+                  <Button className="mt-4" asChild>
+                    <Link href="/blog">Return to Blog</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : post ? (
+              <article>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-3xl">{post.title}</CardTitle>
+                    <CardDescription className="flex items-center gap-4 text-sm">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {format(new Date(post.createdAt), "MMM d, yyyy")}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <User className="h-3 w-3" />
+                        {post.author}
+                      </span>
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="prose prose-sm md:prose-base max-w-none">
+                      <ReactMarkdown>{post.content}</ReactMarkdown>
+                    </div>
+                  </CardContent>
+                </Card>
+              </article>
+            ) : (
+              <Card>
+                <CardContent className="p-12 text-center">
+                  <p className="text-muted-foreground">Blog post not found</p>
+                  <Button className="mt-4" asChild>
+                    <Link href="/blog">Return to Blog</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+
+==== app/blog/loading.tsx ====
+
+export default function Loading() {
+  return null;
+}
+
+
+==== app/blog/page.tsx ====
+
+"use client";
+
+import { useState, useEffect } from "react";
+import { Sidebar } from "@/components/sidebar";
+import { Navbar } from "@/components/navbar";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { format } from "date-fns";
+import { Search, Calendar, User } from "lucide-react";
+import Link from "next/link";
+
+type BlogPost = {
+  id: string;
+  title: string;
+  slug: string;
+  excerpt: string;
+  author: string;
+  createdAt: string;
+  published: boolean;
+};
+
+export default function BlogPage() {
+  const [posts, setPosts] = useState<BlogPost[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch("/api/blog");
+        if (!response.ok) throw new Error("Failed to fetch blog posts");
+
+        const data = await response.json();
+        setPosts(data);
+      } catch (error) {
+        console.error("Error fetching blog posts:", error);
+        // Set sample data if API fails
+        setPosts([
+          {
+            id: "1",
+            title: "Understanding Vermont's Healthcare Reform Initiatives",
+            slug: "understanding-vermont-healthcare-reform",
+            excerpt:
+              "An overview of the key healthcare reform initiatives in Vermont and their impact on residents and providers.",
+            author: "Jane Smith",
+            createdAt: new Date().toISOString(),
+            published: true,
+          },
+          {
+            id: "2",
+            title: "The Role of Green Mountain Care Board in Healthcare Policy",
+            slug: "role-of-green-mountain-care-board",
+            excerpt:
+              "Exploring how the Green Mountain Care Board shapes healthcare policy and ensures quality care for Vermonters.",
+            author: "John Doe",
+            createdAt: new Date(
+              Date.now() - 7 * 24 * 60 * 60 * 1000
+            ).toISOString(),
+            published: true,
+          },
+          {
+            id: "3",
+            title: "Medicaid Expansion: Benefits and Challenges",
+            slug: "medicaid-expansion-benefits-challenges",
+            excerpt:
+              "A detailed analysis of Medicaid expansion in Vermont, including its benefits, challenges, and future outlook.",
+            author: "Sarah Johnson",
+            createdAt: new Date(
+              Date.now() - 14 * 24 * 60 * 60 * 1000
+            ).toISOString(),
+            published: true,
+          },
+          {
+            id: "4",
+            title: "Rural Healthcare Access in Vermont",
+            slug: "rural-healthcare-access-vermont",
+            excerpt:
+              "Examining the challenges of healthcare access in rural Vermont communities and potential solutions.",
+            author: "Michael Brown",
+            createdAt: new Date(
+              Date.now() - 21 * 24 * 60 * 60 * 1000
+            ).toISOString(),
+            published: true,
+          },
+          {
+            id: "5",
+            title: "Value-Based Payment Models in Vermont",
+            slug: "value-based-payment-models-vermont",
+            excerpt:
+              "How value-based payment models are transforming healthcare delivery and financing in Vermont.",
+            author: "Emily Wilson",
+            createdAt: new Date(
+              Date.now() - 28 * 24 * 60 * 60 * 1000
+            ).toISOString(),
+            published: true,
+          },
+        ]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, []);
+
+  // Filter posts based on search term
+  const filteredPosts = searchTerm
+    ? posts.filter(
+        (post) =>
+          post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          post.excerpt.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          post.author.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : posts;
+
+  return (
+    <div className="flex h-screen bg-background">
+      <Sidebar />
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <Navbar />
+        <main className="flex-1 overflow-auto p-4">
+          <div className="container mx-auto max-w-4xl">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
+              <h1 className="text-2xl font-bold">Healthcare Reform Blog</h1>
+
+              <div className="flex gap-4">
+                <div className="relative w-full md:w-64">
+                  <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    placeholder="Search posts..."
+                    className="pl-10"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {isLoading ? (
+              <div className="flex justify-center p-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              </div>
+            ) : filteredPosts.length === 0 ? (
+              <div className="text-center p-12 border rounded-md bg-muted/30">
+                <p className="text-muted-foreground">No blog posts found.</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {filteredPosts.map((post) => (
+                  <Card key={post.id}>
+                    <CardHeader>
+                      <CardTitle className="text-xl hover:text-primary transition-colors">
+                        <Link href={`/blog/${post.slug}`}>{post.title}</Link>
+                      </CardTitle>
+                      <CardDescription className="flex items-center gap-4 text-sm">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {format(new Date(post.createdAt), "MMM d, yyyy")}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <User className="h-3 w-3" />
+                          {post.author}
+                        </span>
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <p>{post.excerpt}</p>
+                    </CardContent>
+                    <CardFooter>
+                      <Button variant="outline" asChild>
+                        <Link href={`/blog/${post.slug}`}>Read More</Link>
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+
+==== app/comments/loading.tsx ====
+
+export default function Loading() {
+  return null;
+}
+
+
+==== app/comments/page.tsx ====
+
+// app/comments/page.tsx
+"use client";
+
+import type React from "react";
+
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardFooter,
+} from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { format } from "date-fns";
+
+interface Comment {
+  id: string;
+  content: string;
+  documentName: string;
+  documentPage: number;
+  author: string;
+  createdAt: string;
+}
+
+export default function CommentsPage() {
+  const searchParams = useSearchParams();
+  const documentName = searchParams.get("document");
+  const documentPage = searchParams.get("page")
+    ? Number.parseInt(searchParams.get("page")!, 10)
+    : undefined;
+
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [author, setAuthor] = useState("Anonymous");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fetch comments when the page loads or when document/page changes
+  useEffect(() => {
+    fetchComments();
+  }, [documentName, documentPage]);
+
+  const fetchComments = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Build the URL with query parameters
+      const params = new URLSearchParams();
+      if (documentName) params.append("document", documentName);
+      if (documentPage !== undefined)
+        params.append("page", documentPage.toString());
+
+      const url = `/api/comments?${params.toString()}`;
+
+      // Add a timeout to the fetch request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      try {
+        const response = await fetch(url, {
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          console.warn(`Comments API returned status: ${response.status}`);
+          setError(`Error fetching comments: ${response.statusText}`);
+          setComments([]);
+          return;
+        }
+
+        const data = await response.json();
+        setComments(data);
+      } catch (fetchError: any) {
+        if (fetchError.name === "AbortError") {
+          setError("Request timed out. Please try again.");
+        } else {
+          setError(`Error fetching comments: ${fetchError.message}`);
+        }
+        setComments([]);
+      }
+    } catch (error: any) {
+      console.error("Error in fetchComments:", error);
+      setError(`Something went wrong: ${error.message}`);
+      setComments([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!newComment.trim()) return;
+    if (!documentName) {
+      setError("Cannot add comment: No document specified");
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setError(null);
+
+      const response = await fetch("/api/comments", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: newComment,
+          documentName,
+          documentPage: documentPage || 1,
+          author,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to add comment");
+      }
+
+      // Clear the form and refresh comments
+      setNewComment("");
+      fetchComments();
+    } catch (error: any) {
+      console.error("Error adding comment:", error);
+      setError(`Failed to add comment: ${error.message}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="container mx-auto py-8 px-4 max-w-4xl">
+      <h1 className="text-3xl font-bold mb-6">
+        {documentName ? `Comments for ${documentName}` : "All Comments"}
+        {documentPage && ` - Page ${documentPage}`}
+      </h1>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative my-4">
+          <strong className="font-bold">Error: </strong>
+          <span className="block sm:inline">{error}</span>
+          <button
+            onClick={fetchComments}
+            className="mt-2 px-3 py-1 bg-red-100 text-red-800 rounded hover:bg-red-200"
+          >
+            Try Again
+          </button>
+        </div>
+      )}
+
+      {documentName && (
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Add a Comment</CardTitle>
+          </CardHeader>
+          <form onSubmit={handleSubmit}>
+            <CardContent className="space-y-4">
+              <div>
+                <label
+                  htmlFor="author"
+                  className="block text-sm font-medium mb-1"
+                >
+                  Your Name
+                </label>
+                <input
+                  type="text"
+                  id="author"
+                  value={author}
+                  onChange={(e) => setAuthor(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md"
+                  placeholder="Anonymous"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="comment"
+                  className="block text-sm font-medium mb-1"
+                >
+                  Comment
+                </label>
+                <Textarea
+                  id="comment"
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  placeholder="Share your thoughts..."
+                  className="min-h-[100px]"
+                  required
+                />
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Submitting..." : "Add Comment"}
+              </Button>
+            </CardFooter>
+          </form>
+        </Card>
+      )}
+
+      <div className="space-y-4">
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        ) : comments.length > 0 ? (
+          comments.map((comment) => (
+            <Card key={comment.id} className="overflow-hidden">
+              <CardContent className="p-0">
+                <div className="p-4">
+                  <div className="flex items-start gap-4">
+                    <Avatar>
+                      <AvatarFallback>
+                        {comment.author.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-start">
+                        <h3 className="font-semibold">{comment.author}</h3>
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(comment.createdAt), "MMM d, yyyy")}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm">{comment.content}</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            <p>No comments yet. Be the first to comment!</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+==== app/dashboard/page.tsx ====
+
+"use client";
+
+import { Sidebar } from "@/components/sidebar";
+import { Navbar } from "@/components/navbar";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  FileText,
+  Users,
+  BarChart2,
+  TrendingUp,
+  Calendar,
+  Clock,
+} from "lucide-react";
+
+export default function DashboardPage() {
+  return (
+    <div className="flex h-screen bg-background">
+      <Sidebar />
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <Navbar />
+        <main className="flex-1 overflow-auto p-4">
+          <div className="container mx-auto">
+            <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              <DashboardCard
+                title="Documents"
+                value="24"
+                description="Total documents"
+                icon={FileText}
+                trend="+3 this week"
+                trendUp={true}
+              />
+              <DashboardCard
+                title="Users"
+                value="156"
+                description="Active users"
+                icon={Users}
+                trend="+12 this month"
+                trendUp={true}
+              />
+              <DashboardCard
+                title="Keywords"
+                value="342"
+                description="In dictionary"
+                icon={BarChart2}
+                trend="+28 this month"
+                trendUp={true}
+              />
+              <DashboardCard
+                title="Comments"
+                value="87"
+                description="Total comments"
+                icon={TrendingUp}
+                trend="+15 this week"
+                trendUp={true}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Recent Activity</CardTitle>
+                  <CardDescription>
+                    Latest actions in the portal
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {[
+                      {
+                        action: "Document uploaded",
+                        user: "John Doe",
+                        time: "2 hours ago",
+                      },
+                      {
+                        action: "Comment added",
+                        user: "Jane Smith",
+                        time: "5 hours ago",
+                      },
+                      {
+                        action: "Keywords updated",
+                        user: "Admin",
+                        time: "Yesterday",
+                      },
+                      {
+                        action: "New blog post",
+                        user: "Sarah Johnson",
+                        time: "2 days ago",
+                      },
+                      {
+                        action: "Document analyzed",
+                        user: "Mike Brown",
+                        time: "3 days ago",
+                      },
+                    ].map((item, index) => (
+                      <div
+                        key={index}
+                        className="flex items-start gap-4 pb-4 border-b last:border-0"
+                      >
+                        <div className="bg-primary/10 p-2 rounded-full">
+                          <Clock className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium">{item.action}</p>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <span>{item.user}</span>
+                            <span>•</span>
+                            <span>{item.time}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Upcoming Events</CardTitle>
+                  <CardDescription>
+                    Healthcare reform events and deadlines
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {[
+                      {
+                        title: "Policy Review Meeting",
+                        date: "March 15, 2023",
+                        location: "Virtual",
+                      },
+                      {
+                        title: "Healthcare Summit",
+                        date: "April 2, 2023",
+                        location: "Burlington, VT",
+                      },
+                      {
+                        title: "Budget Submission Deadline",
+                        date: "April 15, 2023",
+                        location: "N/A",
+                      },
+                      {
+                        title: "Public Forum on Reform",
+                        date: "May 10, 2023",
+                        location: "Montpelier, VT",
+                      },
+                      {
+                        title: "Quarterly Review",
+                        date: "June 1, 2023",
+                        location: "Virtual",
+                      },
+                    ].map((event, index) => (
+                      <div
+                        key={index}
+                        className="flex items-start gap-4 pb-4 border-b last:border-0"
+                      >
+                        <div className="bg-primary/10 p-2 rounded-full">
+                          <Calendar className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium">{event.title}</p>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <span>{event.date}</span>
+                            <span>•</span>
+                            <span>{event.location}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+function DashboardCard({
+  title,
+  value,
+  description,
+  icon: Icon,
+  trend,
+  trendUp,
+}: {
+  title: string;
+  value: string;
+  description: string;
+  icon: any;
+  trend: string;
+  trendUp: boolean;
+}) {
+  return (
+    <Card>
+      <CardContent className="p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">{title}</p>
+            <p className="text-3xl font-bold">{value}</p>
+          </div>
+          <div className="bg-primary/10 p-3 rounded-full">
+            <Icon className="h-6 w-6 text-primary" />
+          </div>
+        </div>
+        <div className="mt-4 flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">{description}</p>
+          <p
+            className={`text-xs ${trendUp ? "text-green-500" : "text-red-500"}`}
+          >
+            {trend}
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+
+==== app/glossary/loading.tsx ====
+
+export default function Loading() {
+  return null;
+}
+
+
+==== app/glossary/page.tsx ====
+
+"use client";
+
+import { useState, useEffect } from "react";
+import { Sidebar } from "@/components/sidebar";
+import { Navbar } from "@/components/navbar";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Search } from "lucide-react";
+
+type Keyword = {
+  id: string;
+  term: string;
+  definition: string;
+};
+
+export default function GlossaryPage() {
+  const [keywords, setKeywords] = useState<Keyword[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [activeIndex, setActiveIndex] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchKeywords = async () => {
+      try {
+        setIsLoading(true);
+        const response = await fetch("/api/keywords");
+        if (!response.ok) throw new Error("Failed to fetch keywords");
+        const data = await response.json();
+        setKeywords(data);
+
+        // Set the first letter as active if there are keywords
+        if (data.length > 0) {
+          const firstLetter = data[0].term.charAt(0).toUpperCase();
+          setActiveIndex(firstLetter);
+        }
+      } catch (error) {
+        console.error("Error fetching keywords:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchKeywords();
+  }, []);
+
+  // Group keywords by first letter
+  const groupedKeywords = keywords.reduce((acc, keyword) => {
+    const firstLetter = keyword.term.charAt(0).toUpperCase();
+    if (!acc[firstLetter]) {
+      acc[firstLetter] = [];
+    }
+    acc[firstLetter].push(keyword);
+    return acc;
+  }, {} as Record<string, Keyword[]>);
+
+  // Get all unique first letters
+  const letters = Object.keys(groupedKeywords).sort();
+
+  // Filter keywords based on search term
+  const filteredKeywords = searchTerm
+    ? keywords.filter(
+        (k) =>
+          k.term.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          k.definition.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : [];
+
+  return (
+    <div className="flex h-screen bg-background">
+      <Sidebar />
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <Navbar />
+        <main className="flex-1 overflow-auto p-4">
+          <div className="container mx-auto">
+            <h1 className="text-2xl font-bold mb-6">
+              Healthcare Terminology Glossary
+            </h1>
+
+            <div className="relative w-full max-w-md mb-8 mx-auto">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search terms and definitions..."
+                className="pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            {isLoading ? (
+              <div className="flex justify-center p-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              </div>
+            ) : searchTerm ? (
+              <div className="space-y-4">
+                <h2 className="text-xl font-semibold">Search Results</h2>
+                {filteredKeywords.length === 0 ? (
+                  <p className="text-muted-foreground">
+                    No matching terms found.
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredKeywords.map((keyword) => (
+                      <Card key={keyword.id}>
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-lg">
+                            {keyword.term}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <p>{keyword.definition}</p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-center mb-8 overflow-x-auto">
+                  <div className="flex space-x-1">
+                    {letters.map((letter) => (
+                      <button
+                        key={letter}
+                        className={`w-8 h-8 flex items-center justify-center rounded-md ${
+                          activeIndex === letter
+                            ? "bg-primary text-primary-foreground"
+                            : "hover:bg-muted"
+                        }`}
+                        onClick={() => setActiveIndex(letter)}
+                      >
+                        {letter}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {activeIndex && groupedKeywords[activeIndex] && (
+                  <div>
+                    <h2 className="text-xl font-semibold mb-4">
+                      {activeIndex}
+                    </h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {groupedKeywords[activeIndex].map((keyword) => (
+                        <Card key={keyword.id}>
+                          <CardHeader className="pb-2">
+                            <CardTitle className="text-lg">
+                              {keyword.term}
+                            </CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <p>{keyword.definition}</p>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+
+==== app/layout.tsx ====
+
+import type React from "react";
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { AuthProvider } from "@/contexts/auth-context";
+
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "Vermont Healthcare Reform Portal",
+  description:
+    "A platform for analyzing healthcare reform documents in Vermont",
+  generator: "v0.dev",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body className={inter.className}>
+        <AuthProvider>{children}</AuthProvider>
+      </body>
+    </html>
+  );
+}
+
+import "./globals.css";
+
+
+==== app/page.tsx ====
+
+"use client";
+
+import { useState, useEffect } from "react";
+import { Sidebar } from "@/components/sidebar";
+import { Navbar } from "@/components/navbar";
+import { DocumentViewer } from "@/components/document-viewer";
+import { KeywordHighlighter } from "@/components/keyword-highlighter";
+import { NewsHeadlines } from "@/components/news-headlines";
+import { NewsArticle } from "@/components/news-article";
+import { ResizableGrid } from "@/components/resizable-grid";
+
+// Define storage key for document text
+const DOCUMENT_TEXT_STORAGE_KEY = "vt-healthcare-document-text";
+
+export default function Home() {
+  const [documentText, setDocumentText] = useState<string>("");
+  const [selectedArticle, setSelectedArticle] = useState<any>(null);
+
+  // Load saved document text from localStorage on component mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedText = localStorage.getItem(DOCUMENT_TEXT_STORAGE_KEY);
+      if (savedText) {
+        setDocumentText(savedText);
+      }
+    }
+  }, []);
+
+  // Handle document text extraction
+  const handleTextExtracted = (text: string) => {
+    setDocumentText(text);
+    // Save to localStorage
+    if (typeof window !== "undefined") {
+      localStorage.setItem(DOCUMENT_TEXT_STORAGE_KEY, text);
+    }
+  };
+
+  return (
+    <div className="flex h-screen bg-background">
+      <Sidebar />
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <Navbar />
+        <main className="flex-1 overflow-hidden p-4">
+          <ResizableGrid>
+            <DocumentViewer onTextExtracted={handleTextExtracted} />
+            <KeywordHighlighter text={documentText} />
+            <NewsHeadlines onArticleSelected={setSelectedArticle} />
+            <NewsArticle article={selectedArticle} />
+          </ResizableGrid>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+
+==== app/settings/page.tsx ====
+
+"use client";
+
+import { Sidebar } from "@/components/sidebar";
+import { Navbar } from "@/components/navbar";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
+
+export default function SettingsPage() {
+  return (
+    <div className="flex h-screen bg-background">
+      <Sidebar />
+      <div className="flex flex-col flex-1 overflow-hidden">
+        <Navbar />
+        <main className="flex-1 overflow-auto p-4">
+          <div className="container mx-auto max-w-4xl">
+            <h1 className="text-2xl font-bold mb-6">Settings</h1>
+
+            <Tabs defaultValue="general">
+              <TabsList className="mb-6">
+                <TabsTrigger value="general">General</TabsTrigger>
+                <TabsTrigger value="appearance">Appearance</TabsTrigger>
+                <TabsTrigger value="notifications">Notifications</TabsTrigger>
+                <TabsTrigger value="advanced">Advanced</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="general">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>General Settings</CardTitle>
+                    <CardDescription>
+                      Manage your general application settings
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Display Name</Label>
+                      <Input
+                        id="name"
+                        defaultValue="Vermont Healthcare Reform Portal"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Contact Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        defaultValue="contact@vthealthcare.org"
+                      />
+                    </div>
+
+                    <Separator />
+
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="auto-save">Auto-save Documents</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Automatically save documents when changes are made
+                        </p>
+                      </div>
+                      <Switch id="auto-save" defaultChecked />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="analytics">Usage Analytics</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Collect anonymous usage data to improve the
+                          application
+                        </p>
+                      </div>
+                      <Switch id="analytics" defaultChecked />
+                    </div>
+                  </CardContent>
+                  <CardFooter>
+                    <Button>Save Changes</Button>
+                  </CardFooter>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="appearance">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Appearance Settings</CardTitle>
+                    <CardDescription>
+                      Customize the look and feel of the application
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-2">
+                      <Label>Theme</Label>
+                      <div className="flex gap-4">
+                        <Button variant="outline" className="flex-1">
+                          Light
+                        </Button>
+                        <Button variant="outline" className="flex-1">
+                          Dark
+                        </Button>
+                        <Button variant="outline" className="flex-1">
+                          System
+                        </Button>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="animations">Interface Animations</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Enable animations throughout the interface
+                        </p>
+                      </div>
+                      <Switch id="animations" defaultChecked />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="compact">Compact Mode</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Use a more compact layout to fit more content on
+                          screen
+                        </p>
+                      </div>
+                      <Switch id="compact" />
+                    </div>
+                  </CardContent>
+                  <CardFooter>
+                    <Button>Save Changes</Button>
+                  </CardFooter>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="notifications">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Notification Settings</CardTitle>
+                    <CardDescription>
+                      Manage your notification preferences
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p>
+                      Notification settings will be implemented in a future
+                      update.
+                    </p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="advanced">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Advanced Settings</CardTitle>
+                    <CardDescription>
+                      Configure advanced application settings
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <p>
+                      Advanced settings will be implemented in a future update.
+                    </p>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
+
+
+==== components/document-viewer copy.tsx ====
+
+"use client";
+
+import type React from "react";
+import { useState, useRef, useEffect } from "react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Upload,
+  FileText,
+  ZoomIn,
+  ZoomOut,
+  MessageSquare,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import Script from "next/script";
+import Link from "next/link";
+
+// Define a global type for the PDF.js library
+declare global {
+  interface Window {
+    pdfjsLib: any;
+  }
+}
+
+// Define storage keys
+const DOCUMENT_URL_STORAGE_KEY = "vt-healthcare-document-url";
+const DOCUMENT_NAME_STORAGE_KEY = "vt-healthcare-document-name";
+const DOCUMENT_PAGE_STORAGE_KEY = "vt-healthcare-document-page";
+const DOCUMENT_SCALE_STORAGE_KEY = "vt-healthcare-document-scale";
+
+export function DocumentViewer({
+  onTextExtracted,
+}: {
+  onTextExtracted: (text: string) => void;
+}) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [documentUrl, setDocumentUrl] = useState<string | null>(null);
+  const [documentName, setDocumentName] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [scale, setScale] = useState(1.0);
+  const [pdfLoaded, setPdfLoaded] = useState(false);
+  const [pdfDocument, setPdfDocument] = useState<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Load saved document state from localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedUrl = localStorage.getItem(DOCUMENT_URL_STORAGE_KEY);
+      const savedName = localStorage.getItem(DOCUMENT_NAME_STORAGE_KEY);
+      const savedPage = localStorage.getItem(DOCUMENT_PAGE_STORAGE_KEY);
+      const savedScale = localStorage.getItem(DOCUMENT_SCALE_STORAGE_KEY);
+
+      if (savedUrl) {
+        setDocumentUrl(savedUrl);
+      }
+      if (savedName) {
+        setDocumentName(savedName);
+      }
+      if (savedPage) {
+        setCurrentPage(Number.parseInt(savedPage, 10));
+      }
+      if (savedScale) {
+        setScale(Number.parseFloat(savedScale));
+      }
+    }
+  }, []);
+
+  // Save document state to localStorage when it changes
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (documentUrl) {
+        localStorage.setItem(DOCUMENT_URL_STORAGE_KEY, documentUrl);
+      }
+      if (documentName) {
+        localStorage.setItem(DOCUMENT_NAME_STORAGE_KEY, documentName);
+      }
+      localStorage.setItem(DOCUMENT_PAGE_STORAGE_KEY, currentPage.toString());
+      localStorage.setItem(DOCUMENT_SCALE_STORAGE_KEY, scale.toString());
+    }
+  }, [documentUrl, documentName, currentPage, scale]);
+
+  // Function to render the current PDF page
+  const renderPage = async (pageNum: number) => {
+    if (!canvasRef.current || !pdfDocument) return;
+
+    try {
+      // Get the page
+      const page = await pdfDocument.getPage(pageNum);
+      const viewport = page.getViewport({ scale });
+
+      // Set canvas dimensions
+      const canvas = canvasRef.current;
+      const context = canvas.getContext("2d");
+      if (!context) return;
+
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+
+      // Clear canvas
+      context.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Render the page
+      await page.render({
+        canvasContext: context,
+        viewport: viewport,
+      }).promise;
+
+      // Extract text from the current page
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map((item: any) => item.str).join(" ");
+      onTextExtracted(pageText);
+    } catch (error) {
+      console.error("Error rendering PDF page:", error);
+    }
+  };
+
+  // Extract text from PDF
+  const extractTextFromPDF = async () => {
+    if (!pdfDocument) return;
+
+    try {
+      let fullText = "";
+
+      for (let i = 1; i <= pdfDocument.numPages; i++) {
+        const page = await pdfDocument.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items
+          .map((item: any) => item.str)
+          .join(" ");
+        fullText += pageText + " ";
+      }
+
+      onTextExtracted(fullText);
+    } catch (error) {
+      console.error("Error extracting text from PDF:", error);
+    }
+  };
+
+  // Load PDF when document URL changes
+  useEffect(() => {
+    if (!documentUrl || !pdfLoaded) return;
+
+    setIsLoading(true);
+
+    const loadPDF = async () => {
+      try {
+        // Use window.pdfjsLib which is loaded from CDN
+        const loadingTask = window.pdfjsLib.getDocument(documentUrl);
+        const pdf = await loadingTask.promise;
+
+        setPdfDocument(pdf);
+        setTotalPages(pdf.numPages);
+
+        // Extract text after loading
+        await extractTextFromPDF();
+
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error loading PDF:", error);
+        setIsLoading(false);
+      }
+    };
+
+    loadPDF();
+  }, [documentUrl, pdfLoaded]);
+
+  // Render page when current page or scale changes
+  useEffect(() => {
+    if (pdfDocument) {
+      renderPage(currentPage);
+    }
+  }, [currentPage, scale, pdfDocument]);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Revoke previous object URL to prevent memory leaks
+    if (documentUrl && documentUrl.startsWith("blob:")) {
+      URL.revokeObjectURL(documentUrl);
+    }
+
+    setDocumentName(file.name);
+    const fileUrl = URL.createObjectURL(file);
+    setDocumentUrl(fileUrl);
+    setCurrentPage(1); // Reset to first page
+  };
+
+  const zoomIn = () => setScale((prev) => Math.min(prev + 0.2, 3.0));
+  const zoomOut = () => setScale((prev) => Math.max(prev - 0.2, 0.5));
+
+  return (
+    <>
+      {/* Load PDF.js from CDN */}
+      <Script
+        src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"
+        onLoad={() => {
+          // Set worker source after library loads
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+            "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";
+          setPdfLoaded(true);
+        }}
+        strategy="afterInteractive"
+      />
+
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-between p-2 border-b">
+          <h3 className="font-medium">Document Viewer</h3>
+          <div className="flex items-center gap-2">
+            {documentUrl && (
+              <Button variant="outline" size="sm" asChild>
+                <Link
+                  href={`/comments?document=${encodeURIComponent(
+                    documentName
+                  )}&page=${currentPage}`}
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Add Comments
+                </Link>
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Upload PDF
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf"
+                className="hidden"
+                onChange={handleFileUpload}
+                aria-label="Upload PDF document"
+              />
+            </Button>
+          </div>
+        </div>
+
+        <div
+          ref={containerRef}
+          className="flex-1 flex items-center justify-center bg-muted/30 overflow-auto relative"
+        >
+          {isLoading ? (
+            <div className="flex flex-col items-center gap-2">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <p className="text-sm text-muted-foreground">
+                Processing document...
+              </p>
+            </div>
+          ) : documentUrl ? (
+            <div className="w-full h-full flex flex-col items-center">
+              <div className="flex-1 w-full flex items-center justify-center overflow-auto p-2">
+                <canvas
+                  ref={canvasRef}
+                  className="shadow-lg"
+                  aria-label={`PDF page ${currentPage} of ${totalPages}`}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2 text-muted-foreground">
+              <FileText className="h-12 w-12" />
+              <p>Upload a PDF document to begin</p>
+            </div>
+          )}
+        </div>
+
+        {documentUrl && totalPages > 0 && (
+          <div className="p-2 flex items-center justify-between gap-2 w-full border-t">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={zoomOut}
+                disabled={scale <= 0.5}
+                aria-label="Zoom out"
+              >
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+              <span className="text-sm">{Math.round(scale * 100)}%</span>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={zoomIn}
+                disabled={scale >= 3.0}
+                aria-label="Zoom in"
+              >
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                aria-label="Previous page"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="icon"
+                disabled={currentPage >= totalPages}
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
+                aria-label="Next page"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+
+==== components/document-viewer.tsx ====
+
+"use client";
+
+import type React from "react";
+import { useState, useRef, useEffect } from "react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Upload,
+  FileText,
+  ZoomIn,
+  ZoomOut,
+  MessageSquare,
+  RefreshCw,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import Script from "next/script";
+import Link from "next/link";
+
+// Define a global type for the PDF.js library
+declare global {
+  interface Window {
+    pdfjsLib: any;
+  }
+}
+
+// Define storage keys
+const DOCUMENT_URL_STORAGE_KEY = "vt-healthcare-document-url";
+const DOCUMENT_NAME_STORAGE_KEY = "vt-healthcare-document-name";
+const DOCUMENT_PAGE_STORAGE_KEY = "vt-healthcare-document-page";
+const DOCUMENT_SCALE_STORAGE_KEY = "vt-healthcare-document-scale";
+
+export function DocumentViewer({
+  onTextExtracted,
+}: {
+  onTextExtracted: (text: string) => void;
+}) {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [documentUrl, setDocumentUrl] = useState<string | null>(null);
+  const [documentName, setDocumentName] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [scale, setScale] = useState(1.0);
+  const [pdfLoaded, setPdfLoaded] = useState(false);
+  const [pdfDocument, setPdfDocument] = useState<any>(null);
+  const [pdfBytes, setPdfBytes] = useState<Uint8Array | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const blobUrlRef = useRef<string | null>(null);
+
+  // Load saved document state from localStorage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedUrl = localStorage.getItem(DOCUMENT_URL_STORAGE_KEY);
+      const savedName = localStorage.getItem(DOCUMENT_NAME_STORAGE_KEY);
+      const savedPage = localStorage.getItem(DOCUMENT_PAGE_STORAGE_KEY);
+      const savedScale = localStorage.getItem(DOCUMENT_SCALE_STORAGE_KEY);
+
+      if (savedName) {
+        setDocumentName(savedName);
+      }
+      if (savedPage) {
+        setCurrentPage(Number.parseInt(savedPage, 10));
+      }
+      if (savedScale) {
+        setScale(Number.parseFloat(savedScale));
+      }
+
+      // We'll handle the URL separately since we need to fetch the file again
+      if (
+        savedUrl &&
+        savedUrl.startsWith("http") &&
+        !savedUrl.startsWith("blob:")
+      ) {
+        setDocumentUrl(savedUrl);
+      }
+    }
+  }, []);
+
+  // Save document state to localStorage when it changes
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (documentUrl && !documentUrl.startsWith("blob:")) {
+        localStorage.setItem(DOCUMENT_URL_STORAGE_KEY, documentUrl);
+      }
+      if (documentName) {
+        localStorage.setItem(DOCUMENT_NAME_STORAGE_KEY, documentName);
+      }
+      localStorage.setItem(DOCUMENT_PAGE_STORAGE_KEY, currentPage.toString());
+      localStorage.setItem(DOCUMENT_SCALE_STORAGE_KEY, scale.toString());
+    }
+  }, [documentUrl, documentName, currentPage, scale]);
+
+  // Function to render the current PDF page
+  const renderPage = async (pageNum: number) => {
+    if (!canvasRef.current || !pdfDocument) return;
+    setError(null);
+
+    try {
+      // Get the page
+      const page = await pdfDocument.getPage(pageNum);
+      const viewport = page.getViewport({ scale });
+
+      // Set canvas dimensions
+      const canvas = canvasRef.current;
+      const context = canvas.getContext("2d");
+      if (!context) return;
+
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+
+      // Clear canvas
+      context.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Render the page
+      await page.render({
+        canvasContext: context,
+        viewport: viewport,
+      }).promise;
+
+      // Extract text from the current page
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items.map((item: any) => item.str).join(" ");
+      onTextExtracted(pageText);
+    } catch (error) {
+      console.error("Error rendering PDF page:", error);
+      setError("Failed to render PDF page. Please try again.");
+    }
+  };
+
+  // Extract text from PDF
+  const extractTextFromPDF = async () => {
+    if (!pdfDocument) return;
+
+    try {
+      let fullText = "";
+
+      for (let i = 1; i <= pdfDocument.numPages; i++) {
+        const page = await pdfDocument.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items
+          .map((item: any) => item.str)
+          .join(" ");
+        fullText += pageText + " ";
+      }
+
+      onTextExtracted(fullText);
+    } catch (error) {
+      console.error("Error extracting text from PDF:", error);
+      setError("Failed to extract text from PDF. Please try again.");
+    }
+  };
+
+  // Fetch and load PDF data
+  const fetchAndLoadPDF = async (url: string) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Fetch the PDF file as an ArrayBuffer
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+
+      // Store the PDF bytes
+      setPdfBytes(bytes);
+
+      // Load the PDF using PDF.js
+      const loadingTask = window.pdfjsLib.getDocument({ data: bytes });
+      const pdf = await loadingTask.promise;
+
+      setPdfDocument(pdf);
+      setTotalPages(pdf.numPages);
+
+      // Extract text after loading
+      await extractTextFromPDF();
+
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error loading PDF:", error);
+      setError(
+        `Failed to load PDF: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+      setIsLoading(false);
+    }
+  };
+
+  // Load PDF when document URL changes
+  useEffect(() => {
+    if (!documentUrl || !pdfLoaded) return;
+
+    // Don't try to load from blob URLs directly
+    if (!documentUrl.startsWith("blob:")) {
+      fetchAndLoadPDF(documentUrl);
+    }
+  }, [documentUrl, pdfLoaded]);
+
+  // Render page when current page or scale changes
+  useEffect(() => {
+    if (pdfDocument) {
+      renderPage(currentPage);
+    }
+  }, [currentPage, scale, pdfDocument]);
+
+  // Clean up blob URLs when component unmounts or when a new file is loaded
+  useEffect(() => {
+    return () => {
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+      }
+    };
+  }, []);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      // Revoke previous object URL to prevent memory leaks
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = null;
+      }
+
+      setDocumentName(file.name);
+
+      // Read the file as an ArrayBuffer
+      const arrayBuffer = await file.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+
+      // Store the PDF bytes
+      setPdfBytes(bytes);
+
+      // Create a blob URL for download/sharing purposes only
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      const blobUrl = URL.createObjectURL(blob);
+      blobUrlRef.current = blobUrl;
+
+      // We don't set documentUrl to the blob URL anymore
+      // Instead, we'll work directly with the bytes
+
+      // Load the PDF using PDF.js
+      const loadingTask = window.pdfjsLib.getDocument({ data: bytes });
+      const pdf = await loadingTask.promise;
+
+      setPdfDocument(pdf);
+      setTotalPages(pdf.numPages);
+      setCurrentPage(1); // Reset to first page
+
+      // Extract text after loading
+      await extractTextFromPDF();
+
+      setIsLoading(false);
+    } catch (error) {
+      console.error("Error processing PDF file:", error);
+      setError(
+        `Failed to process PDF file: ${
+          error instanceof Error ? error.message : String(error)
+        }`
+      );
+      setIsLoading(false);
+    }
+  };
+
+  const zoomIn = () => setScale((prev) => Math.min(prev + 0.2, 3.0));
+  const zoomOut = () => setScale((prev) => Math.max(prev - 0.2, 0.5));
+
+  const retryLoading = () => {
+    if (documentUrl && !documentUrl.startsWith("blob:")) {
+      fetchAndLoadPDF(documentUrl);
+    } else if (pdfBytes) {
+      // If we have the PDF bytes, try loading again
+      const loadingTask = window.pdfjsLib.getDocument({ data: pdfBytes });
+      setIsLoading(true);
+      setError(null);
+
+      loadingTask.promise
+        .then((pdf: any) => {
+          setPdfDocument(pdf);
+          setTotalPages(pdf.numPages);
+          return extractTextFromPDF();
+        })
+        .then(() => {
+          setIsLoading(false);
+        })
+        .catch((err: any) => {
+          console.error("Error reloading PDF:", err);
+          setError(`Failed to reload PDF: ${err.message}`);
+          setIsLoading(false);
+        });
+    }
+  };
+
+  return (
+    <>
+      {/* Load PDF.js from CDN */}
+      <Script
+        src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"
+        onLoad={() => {
+          // Set worker source after library loads
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+            "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";
+          setPdfLoaded(true);
+        }}
+        strategy="afterInteractive"
+      />
+
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-between p-2 border-b">
+          <h3 className="font-medium">Document Viewer</h3>
+          <div className="flex items-center gap-2">
+            {pdfDocument && (
+              <Button variant="outline" size="sm" asChild>
+                <Link
+                  href={`/comments?document=${encodeURIComponent(
+                    documentName
+                  )}&page=${currentPage}`}
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Add Comments
+                </Link>
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Upload PDF
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf"
+                className="hidden"
+                onChange={handleFileUpload}
+                aria-label="Upload PDF document"
+              />
+            </Button>
+          </div>
+        </div>
+
+        <div
+          ref={containerRef}
+          className="flex-1 flex items-center justify-center bg-muted/30 overflow-auto relative"
+        >
+          {isLoading ? (
+            <div className="flex flex-col items-center gap-2">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              <p className="text-sm text-muted-foreground">
+                Processing document...
+              </p>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center gap-4 p-6 max-w-md text-center">
+              <div className="bg-red-50 text-red-700 p-4 rounded-lg">
+                <p className="font-semibold mb-2">Error loading PDF</p>
+                <p className="text-sm">{error}</p>
+              </div>
+              <Button variant="outline" onClick={retryLoading}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Try Again
+              </Button>
+            </div>
+          ) : pdfDocument ? (
+            <div className="w-full h-full flex flex-col items-center">
+              <div className="flex-1 w-full flex items-center justify-center overflow-auto p-2">
+                <canvas
+                  ref={canvasRef}
+                  className="shadow-lg"
+                  aria-label={`PDF page ${currentPage} of ${totalPages}`}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2 text-muted-foreground">
+              <FileText className="h-12 w-12" />
+              <p>Upload a PDF document to begin</p>
+            </div>
+          )}
+        </div>
+
+        {pdfDocument && totalPages > 0 && (
+          <div className="p-2 flex items-center justify-between gap-2 w-full border-t">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={zoomOut}
+                disabled={scale <= 0.5}
+                aria-label="Zoom out"
+              >
+                <ZoomOut className="h-4 w-4" />
+              </Button>
+              <span className="text-sm">{Math.round(scale * 100)}%</span>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={zoomIn}
+                disabled={scale >= 3.0}
+                aria-label="Zoom in"
+              >
+                <ZoomIn className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                aria-label="Previous page"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="icon"
+                disabled={currentPage >= totalPages}
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
+                aria-label="Next page"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+
+==== components/keyword-highlighter.tsx ====
+
+"use client";
+
+import type React from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import type { Keyword } from "@/services/keyword-service";
+
+type KeywordDictionary = {
+  [keyword: string]: string;
+};
+
+export function KeywordHighlighter({ text }: { text: string }) {
+  const [highlightedKeywords, setHighlightedKeywords] = useState<
+    React.ReactNode[]
+  >([]);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [keywords, setKeywords] = useState<KeywordDictionary>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const fallbackUsed = useRef(false);
+  const [useFallback, setUseFallback] = useState(false);
+
+  // Function to use fallback keywords
+  const useFallbackKeywords = useCallback(() => {
+    if (fallbackUsed.current) return;
+
+    console.log("Using fallback keywords");
+    const fallbackData = {
+      "green mountain care board":
+        "An independent group created by the Vermont Legislature in 2011 to oversee the development of health care policy in Vermont.",
+      medicaid:
+        "A joint federal and state program that helps with medical costs for some people with limited income and resources.",
+      healthcare:
+        "The organized provision of medical care to individuals or a community.",
+      reform: "To make changes in something in order to improve it.",
+      "payment models":
+        "Methods of paying healthcare providers for services rendered.",
+      "all-payer model":
+        "A healthcare payment model that involves all payers (Medicare, Medicaid, commercial) using the same approach to pay providers.",
+      "blueprint for health":
+        "Vermont's state-led initiative that works to integrate care across the healthcare spectrum.",
+      "rural healthcare":
+        "Healthcare services provided in rural areas, often facing unique challenges of access and resources.",
+      telehealth:
+        "The delivery of health care, health education, and health information services via remote technologies.",
+    };
+
+    setKeywords(fallbackData);
+    fallbackUsed.current = true;
+  }, []);
+
+  // Load keywords on component mount
+  useEffect(() => {
+    const fetchKeywords = async () => {
+      try {
+        setIsLoading(true);
+
+        // Use a timeout to handle potential network issues
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Request timeout")), 5000)
+        );
+
+        // Race the fetch against the timeout
+        const response = (await Promise.race([
+          fetch("/api/keywords"),
+          timeoutPromise,
+        ])) as Response;
+
+        // Handle non-OK responses without throwing
+        if (!response.ok) {
+          console.warn(`Keywords API returned status: ${response.status}`);
+          setUseFallback(true);
+          return;
+        }
+
+        const data = await response.json();
+
+        const keywordDict: KeywordDictionary = {};
+        data.forEach((item: Keyword) => {
+          keywordDict[item.term.toLowerCase()] = item.definition;
+        });
+
+        setKeywords(keywordDict);
+      } catch (error) {
+        console.error("Error fetching keywords:", error);
+        // Use fallback data on any error
+        setUseFallback(true);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchKeywords();
+  }, []);
+
+  useEffect(() => {
+    if (useFallback) {
+      useFallbackKeywords();
+    }
+  }, [useFallback, useFallbackKeywords]);
+
+  // Process text when it changes or when keywords/search term changes
+  useEffect(() => {
+    if (!text || isLoading) {
+      setHighlightedKeywords([]);
+      return;
+    }
+
+    // Create a list of all keywords
+    const keywordList = Object.keys(keywords);
+
+    // Filter keywords based on search term
+    const filteredKeywords = searchTerm
+      ? keywordList.filter((k) =>
+          k.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      : keywordList;
+
+    if (filteredKeywords.length === 0) {
+      setHighlightedKeywords([]);
+      return;
+    }
+
+    // Find all keyword matches in the text
+    const matches = new Set<string>();
+    const textLower = text.toLowerCase();
+
+    filteredKeywords.forEach((keyword) => {
+      const keywordLower = keyword.toLowerCase();
+      if (textLower.includes(keywordLower)) {
+        matches.add(keyword);
+      }
+    });
+
+    // Create formatted elements for each matched keyword
+    const elements = Array.from(matches).map((keyword, index) => {
+      const definition = keywords[keyword.toLowerCase()];
+      return (
+        <div key={index} className="mb-8">
+          <div className="font-bold text-red-600 text-lg">{keyword}</div>
+          <div className="mt-6 text-sm text-gray-800">{definition}</div>
+        </div>
+      );
+    });
+
+    setHighlightedKeywords(elements);
+  }, [text, searchTerm, keywords, isLoading]);
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between p-2 border-b">
+        <h3 className="font-medium">Keyword Highlights</h3>
+        <div className="relative w-48">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Filter keywords..."
+            className="pl-8 h-9"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            aria-label="Filter keywords"
+          />
+        </div>
+      </div>
+
+      <div className="flex-1 p-4 overflow-auto">
+        {isLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        ) : text ? (
+          highlightedKeywords.length > 0 ? (
+            <div className="space-y-6">{highlightedKeywords}</div>
+          ) : (
+            <div className="flex items-center justify-center h-full text-muted-foreground">
+              <p>No matching keywords found in the document</p>
+            </div>
+          )
+        ) : (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            <p>No document text to analyze</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+
+==== components/navbar.tsx ====
+
+"use client";
+
+import { Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import Link from "next/link";
+
+export function Navbar() {
+  return (
+    <header className="border-b bg-background">
+      <div className="flex h-16 items-center px-4 gap-4">
+        <h1 className="text-xl font-semibold">
+          Vermont Healthcare Reform Portal
+        </h1>
+        <div className="ml-auto flex items-center gap-4">
+          <div className="relative w-64 max-md:hidden">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Search documents..."
+              className="w-full pl-8"
+              aria-label="Search documents"
+            />
+          </div>
+
+          <Button asChild variant="outline">
+            <Link href="/admin">Admin Dashboard</Link>
+          </Button>
+        </div>
+      </div>
+    </header>
+  );
+}
+
+
+==== components/news-article.tsx ====
+
+"use client";
+
+import { FileText } from "lucide-react";
+
+// Sample article content - in a real app, this would come from an API
+const SAMPLE_CONTENT = {
+  1: `Vermont is launching a new initiative to expand healthcare access in rural areas. The program will establish mobile health clinics and telehealth services to reach residents in underserved communities.
+
+The initiative aims to address disparities in healthcare access between urban and rural areas of the state. According to health officials, residents in some rural communities must travel over 30 miles to reach the nearest primary care provider.
+
+"This is a critical step toward ensuring all Vermonters have access to quality healthcare, regardless of where they live," said the state's health commissioner. The program will be funded through a combination of state funds and federal grants.`,
+
+  2: `The Green Mountain Care Board has approved a new value-based payment model for primary care providers in Vermont. The model shifts away from fee-for-service payments toward a system that rewards quality of care and patient outcomes.
+
+Under the new model, providers will receive a fixed monthly payment per patient, with additional incentives for meeting quality metrics and improving patient health outcomes. The board believes this approach will help control healthcare costs while improving the quality of care.
+
+The payment model will be implemented gradually, starting with a pilot program involving several healthcare organizations across the state. If successful, it could be expanded to include more providers and specialties.`,
+
+  3: `A recent study published in the Medical Research Journal shows improved health outcomes resulting from Vermont's healthcare reform efforts. The research examined data from the past five years and found significant improvements in several key metrics.
+
+According to the study, the state has seen a 15% reduction in preventable hospital admissions and a 12% increase in the number of residents with a regular primary care provider. The researchers attribute these improvements to the state's focus on preventive care and care coordination.
+
+"Vermont's approach to healthcare reform provides valuable lessons for other states," the study's lead author noted. The research also identified areas for further improvement, including mental health services and substance abuse treatment.`,
+
+  4: `The Vermont Legislature is considering a new healthcare bill aimed at reducing prescription drug costs for residents. The proposed legislation would establish a prescription drug affordability board with the authority to set upper payment limits for certain high-cost medications.
+
+Supporters argue the bill would help make essential medications more affordable for Vermonters, particularly seniors and those with chronic conditions. However, pharmaceutical industry representatives have expressed concerns about potential impacts on innovation and drug availability.
+
+The bill has passed the House and is currently being considered by the Senate Health and Welfare Committee. Public hearings on the legislation are scheduled for next month.`,
+
+  5: `Community health centers across Vermont will receive additional funding through new federal grants announced this week. The funding, totaling $12 million, will support the expansion of services and facilities at existing centers and the establishment of new centers in underserved areas.
+
+The grants will help health centers enhance primary care services, expand mental health and substance abuse treatment programs, and improve facilities and equipment. Officials expect the funding to increase access to care for approximately 25,000 additional Vermonters.
+
+"Community health centers are the backbone of our healthcare safety net," said a spokesperson for the Vermont Department of Health. "This funding will strengthen their ability to serve vulnerable populations throughout the state."`,
+};
+
+export function NewsArticle({ article }: { article: any | null }) {
+  if (!article) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="p-2 border-b">
+          <h3 className="font-medium">Article Details</h3>
+        </div>
+        <div className="flex-1 flex items-center justify-center text-muted-foreground">
+          <div className="flex flex-col items-center gap-2">
+            <FileText className="h-12 w-12" />
+            <p>Select an article to view details</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="p-2 border-b">
+        <h3 className="font-medium">Article Details</h3>
+      </div>
+      <div className="flex-1 p-4 overflow-auto">
+        <h2 className="text-xl font-bold mb-2">{article.title}</h2>
+        <div className="flex items-center gap-2 mb-4 text-sm text-muted-foreground">
+          <span>{article.date}</span>
+          <span>•</span>
+          <span>{article.source}</span>
+        </div>
+        <p className="text-sm mb-4">{article.summary}</p>
+        <div className="prose prose-sm max-w-none">
+          {SAMPLE_CONTENT[article.id as keyof typeof SAMPLE_CONTENT]
+            .split("\n\n")
+            .map((paragraph, index) => (
+              <p key={index} className="mb-4">
+                {paragraph}
+              </p>
+            ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+==== components/news-headlines.tsx ====
+
+"use client";
+
+import { useState, useEffect } from "react";
+import { Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+
+// Sample news data - in a real app, this would come from an API
+const SAMPLE_NEWS = [
+  {
+    id: 1,
+    title: "Vermont Expands Healthcare Access in Rural Areas",
+    date: "2023-05-15",
+    source: "VT Health News",
+    summary:
+      "New initiative aims to bring healthcare services to underserved rural communities.",
+  },
+  {
+    id: 2,
+    title: "Green Mountain Care Board Approves New Payment Model",
+    date: "2023-04-28",
+    source: "Healthcare Reform Today",
+    summary:
+      "The board has approved a value-based payment model for primary care providers.",
+  },
+  {
+    id: 3,
+    title:
+      "Study Shows Improved Outcomes from Vermont's Healthcare Initiatives",
+    date: "2023-03-10",
+    source: "Medical Research Journal",
+    summary:
+      "Recent study indicates positive results from Vermont's healthcare reform efforts.",
+  },
+  {
+    id: 4,
+    title: "Legislature Considers New Healthcare Bill",
+    date: "2023-02-22",
+    source: "VT Policy Watch",
+    summary:
+      "Lawmakers debate new legislation aimed at reducing prescription drug costs.",
+  },
+  {
+    id: 5,
+    title: "Community Health Centers Receive Additional Funding",
+    date: "2023-01-15",
+    source: "Public Health Update",
+    summary:
+      "Federal grants will support expansion of community health centers across Vermont.",
+  },
+];
+
+export function NewsHeadlines({
+  onArticleSelected,
+}: {
+  onArticleSelected: (article: any) => void;
+}) {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filteredNews, setFilteredNews] = useState(SAMPLE_NEWS);
+
+  useEffect(() => {
+    if (!searchTerm) {
+      setFilteredNews(SAMPLE_NEWS);
+      return;
+    }
+
+    const filtered = SAMPLE_NEWS.filter(
+      (article) =>
+        article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        article.summary.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    setFilteredNews(filtered);
+  }, [searchTerm]);
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-between p-2 border-b">
+        <h3 className="font-medium">News Headlines</h3>
+        <div className="relative w-48">
+          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search news..."
+            className="pl-8 h-9"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            aria-label="Search news"
+          />
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-auto">
+        <ul className="divide-y">
+          {filteredNews.map((article) => (
+            <li
+              key={article.id}
+              className="p-3 hover:bg-muted/50 cursor-pointer transition-colors duration-200"
+              onClick={() => onArticleSelected(article)}
+              tabIndex={0}
+              role="button"
+              aria-label={`Read article: ${article.title}`}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  onArticleSelected(article);
+                }
+              }}
+            >
+              <h4 className="font-medium text-sm">{article.title}</h4>
+              <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                <span>{article.date}</span>
+                <span>•</span>
+                <span>{article.source}</span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+
+==== components/resizable-grid.tsx ====
+
+"use client";
+
+import type React from "react";
+
+import { useState, useRef, useEffect } from "react";
+
+export function ResizableGrid({ children }: { children: React.ReactNode[] }) {
+  const [gridLayout, setGridLayout] = useState({
+    topLeftHeight: 50, // percentage
+    topRightHeight: 50, // percentage
+    leftWidth: 50, // percentage
+  });
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isDraggingHorizontal = useRef(false);
+  const isDraggingVertical = useRef(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Check if we're on a mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  const handleHorizontalResize = (e: MouseEvent | TouchEvent) => {
+    if (!isDraggingHorizontal.current || !containerRef.current) return;
+
+    const containerWidth = containerRef.current.clientWidth;
+    let clientX: number;
+
+    if ("touches" in e) {
+      clientX = e.touches[0].clientX;
+    } else {
+      clientX = e.clientX;
+    }
+
+    const newLeftWidth = (clientX / containerWidth) * 100;
+
+    // Limit the minimum size
+    if (newLeftWidth > 20 && newLeftWidth < 80) {
+      setGridLayout((prev) => ({
+        ...prev,
+        leftWidth: newLeftWidth,
+      }));
+    }
+  };
+
+  const handleVerticalResize = (e: MouseEvent | TouchEvent) => {
+    if (!isDraggingVertical.current || !containerRef.current) return;
+
+    const containerHeight = containerRef.current.clientHeight;
+    let clientY: number;
+
+    if ("touches" in e) {
+      clientY = e.touches[0].clientY;
+    } else {
+      clientY = e.clientY;
+    }
+
+    const newTopHeight = (clientY / containerHeight) * 100;
+
+    // Limit the minimum size
+    if (newTopHeight > 20 && newTopHeight < 80) {
+      setGridLayout((prev) => ({
+        ...prev,
+        topLeftHeight: newTopHeight,
+        topRightHeight: newTopHeight,
+      }));
+    }
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      handleHorizontalResize(e);
+      handleVerticalResize(e);
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      handleHorizontalResize(e);
+      handleVerticalResize(e);
+    };
+
+    const handleEnd = () => {
+      isDraggingHorizontal.current = false;
+      isDraggingVertical.current = false;
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleEnd);
+    document.addEventListener("touchmove", handleTouchMove);
+    document.addEventListener("touchend", handleEnd);
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleEnd);
+      document.removeEventListener("touchmove", handleTouchMove);
+      document.removeEventListener("touchend", handleEnd);
+    };
+  }, []);
+
+  // For mobile devices, stack the panels vertically
+  if (isMobile) {
+    return (
+      <div ref={containerRef} className="w-full h-full flex flex-col gap-4">
+        {children.map((child, index) => (
+          <div
+            key={index}
+            className="flex-1 min-h-[300px] overflow-hidden rounded-lg border bg-background shadow"
+          >
+            {child}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div ref={containerRef} className="w-full h-full relative">
+      <div
+        className="absolute top-0 left-0 overflow-hidden rounded-lg border bg-background shadow"
+        style={{
+          width: `${gridLayout.leftWidth}%`,
+          height: `${gridLayout.topLeftHeight}%`,
+          padding: "1px",
+        }}
+        aria-label="Document Viewer Panel"
+      >
+        {children[0]}
+      </div>
+
+      <div
+        className="absolute top-0 overflow-hidden rounded-lg border bg-background shadow"
+        style={{
+          left: `${gridLayout.leftWidth}%`,
+          width: `${100 - gridLayout.leftWidth}%`,
+          height: `${gridLayout.topRightHeight}%`,
+          padding: "1px",
+        }}
+        aria-label="Keyword Highlights Panel"
+      >
+        {children[1]}
+      </div>
+
+      <div
+        className="absolute left-0 overflow-hidden rounded-lg border bg-background shadow"
+        style={{
+          top: `${gridLayout.topLeftHeight}%`,
+          width: `${gridLayout.leftWidth}%`,
+          height: `${100 - gridLayout.topLeftHeight}%`,
+          padding: "1px",
+        }}
+        aria-label="News Headlines Panel"
+      >
+        {children[2]}
+      </div>
+
+      <div
+        className="absolute overflow-hidden rounded-lg border bg-background shadow"
+        style={{
+          top: `${gridLayout.topRightHeight}%`,
+          left: `${gridLayout.leftWidth}%`,
+          width: `${100 - gridLayout.leftWidth}%`,
+          height: `${100 - gridLayout.topRightHeight}%`,
+          padding: "1px",
+        }}
+        aria-label="News Article Panel"
+      >
+        {children[3]}
+      </div>
+
+      {/* Horizontal resize handle */}
+      <div
+        className="absolute top-0 bottom-0 w-4 cursor-col-resize bg-transparent hover:bg-primary/10 z-10 transition-colors duration-200"
+        style={{ left: `calc(${gridLayout.leftWidth}% - 8px)` }}
+        onMouseDown={() => {
+          isDraggingHorizontal.current = true;
+        }}
+        onTouchStart={() => {
+          isDraggingHorizontal.current = true;
+        }}
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize panels horizontally"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowLeft") {
+            setGridLayout((prev) => ({
+              ...prev,
+              leftWidth: Math.max(20, prev.leftWidth - 1),
+            }));
+          } else if (e.key === "ArrowRight") {
+            setGridLayout((prev) => ({
+              ...prev,
+              leftWidth: Math.min(80, prev.leftWidth + 1),
+            }));
+          }
+        }}
+      />
+
+      {/* Vertical resize handle */}
+      <div
+        className="absolute left-0 right-0 h-4 cursor-row-resize bg-transparent hover:bg-primary/10 z-10 transition-colors duration-200"
+        style={{ top: `calc(${gridLayout.topLeftHeight}% - 8px)` }}
+        onMouseDown={() => {
+          isDraggingVertical.current = true;
+        }}
+        onTouchStart={() => {
+          isDraggingVertical.current = true;
+        }}
+        role="separator"
+        aria-orientation="horizontal"
+        aria-label="Resize panels vertically"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowUp") {
+            setGridLayout((prev) => ({
+              ...prev,
+              topLeftHeight: Math.max(20, prev.topLeftHeight - 1),
+              topRightHeight: Math.max(20, prev.topRightHeight - 1),
+            }));
+          } else if (e.key === "ArrowDown") {
+            setGridLayout((prev) => ({
+              ...prev,
+              topLeftHeight: Math.min(80, prev.topLeftHeight + 1),
+              topRightHeight: Math.min(80, prev.topRightHeight + 1),
+            }));
+          }
+        }}
+      />
+
+      {/* Intersection handle */}
+      <div
+        className="absolute w-8 h-8 cursor-move bg-transparent hover:bg-primary/20 z-20 rounded-full transition-colors duration-200"
+        style={{
+          left: `calc(${gridLayout.leftWidth}% - 16px)`,
+          top: `calc(${gridLayout.topLeftHeight}% - 16px)`,
+        }}
+        onMouseDown={() => {
+          isDraggingHorizontal.current = true;
+          isDraggingVertical.current = true;
+        }}
+        onTouchStart={() => {
+          isDraggingHorizontal.current = true;
+          isDraggingVertical.current = true;
+        }}
+        aria-label="Resize panels in both directions"
+        tabIndex={0}
+      />
+    </div>
+  );
+}
+
+
+==== components/sidebar.tsx ====
+
+"use client";
+
+import {
+  FileText,
+  Home,
+  BookOpen,
+  BarChart,
+  Settings,
+  Menu,
+  MessageSquare,
+  Newspaper,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+export function Sidebar() {
+  const [collapsed, setCollapsed] = useState(false);
+  const pathname = usePathname();
+
+  const navItems = [
+    { icon: Home, label: "Dashboard", href: "/dashboard" },
+    { icon: FileText, label: "Documents", href: "/" },
+    { icon: BookOpen, label: "Glossary", href: "/glossary" },
+    { icon: BarChart, label: "Analytics", href: "/analytics" },
+    { icon: MessageSquare, label: "Comments", href: "/comments" },
+    { icon: Newspaper, label: "Blog", href: "/blog" },
+    { icon: Settings, label: "Settings", href: "/settings" },
+  ];
+
+  return (
+    <div
+      className={cn(
+        "h-screen border-r bg-background transition-all duration-300",
+        collapsed ? "w-16" : "w-64"
+      )}
+    >
+      <div className="flex h-16 items-center justify-between px-4 border-b">
+        {!collapsed && (
+          <h2 className="text-lg font-semibold">VT Health Reform</h2>
+        )}
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setCollapsed(!collapsed)}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          <Menu className="h-5 w-5" />
+        </Button>
+      </div>
+      <nav className="space-y-1 p-2">
+        {navItems.map((item) => (
+          <NavItem
+            key={item.href}
+            icon={item.icon}
+            label={item.label}
+            href={item.href}
+            collapsed={collapsed}
+            active={pathname === item.href}
+          />
+        ))}
+      </nav>
+    </div>
+  );
+}
+
+function NavItem({
+  icon: Icon,
+  label,
+  href,
+  collapsed,
+  active,
+}: {
+  icon: any;
+  label: string;
+  href: string;
+  collapsed: boolean;
+  active?: boolean;
+}) {
+  return (
+    <Button
+      variant={active ? "secondary" : "ghost"}
+      className={cn("w-full justify-start", collapsed ? "px-2" : "px-3")}
+      asChild
+    >
+      <Link href={href}>
+        <Icon className="h-5 w-5" />
+        {!collapsed && <span className="ml-2">{label}</span>}
+      </Link>
+    </Button>
+  );
+}
+
+
+==== components/test.tsx ====
+
+
+
+==== components/theme-provider.tsx ====
+
+"use client";
+
+import * as React from "react";
+import {
+  ThemeProvider as NextThemesProvider,
+  type ThemeProviderProps,
+} from "next-themes";
+
+export function ThemeProvider({ children, ...props }: ThemeProviderProps) {
+  return <NextThemesProvider {...props}>{children}</NextThemesProvider>;
+}
+
+
+==== contexts/auth-context.tsx ====
+
+"use client";
+
+import type React from "react";
+import { createContext, useContext, useState, useEffect } from "react";
+
+// Define user types
+type User = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+};
+
+// Define auth context type
+type AuthContextType = {
+  user: User | null;
+  loading: boolean;
+  login: (email: string, password: string) => Promise<boolean>;
+  logout: () => void;
+};
+
+// Create the auth context
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Mock user data
+const USERS = [
+  {
+    id: "1",
+    name: "Admin User",
+    email: "admin@vthealthcare.org",
+    password: "adminpassword",
+    role: "admin",
+  },
+  {
+    id: "2",
+    name: "Regular User",
+    email: "user@vthealthcare.org",
+    password: "userpassword",
+    role: "user",
+  },
+];
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Check for existing session on mount
+  useEffect(() => {
+    const storedUser = localStorage.getItem("auth-user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+    setLoading(false);
+  }, []);
+
+  // Login function
+  const login = async (email: string, password: string): Promise<boolean> => {
+    // Simulate API call delay
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    const foundUser = USERS.find(
+      (u) => u.email === email && u.password === password
+    );
+
+    if (foundUser) {
+      const { password, ...userWithoutPassword } = foundUser;
+      setUser(userWithoutPassword);
+      localStorage.setItem("auth-user", JSON.stringify(userWithoutPassword));
+      return true;
+    }
+
+    return false;
+  };
+
+  // Logout function
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem("auth-user");
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+// Custom hook to use auth context
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+}
+
+
+==== hooks/use-mobile.ts ====
+
+import * as React from "react"
+
+const MOBILE_BREAKPOINT = 768
+
+export function useIsMobile() {
+  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
+
+  React.useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
+    const onChange = () => {
+      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
+    }
+    mql.addEventListener("change", onChange)
+    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
+    return () => mql.removeEventListener("change", onChange)
+  }, [])
+
+  return !!isMobile
+}
+
+
+==== hooks/use-mobile.tsx ====
+
+import * as React from "react"
+
+const MOBILE_BREAKPOINT = 768
+
+export function useIsMobile() {
+  const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
+
+  React.useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`)
+    const onChange = () => {
+      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
+    }
+    mql.addEventListener("change", onChange)
+    setIsMobile(window.innerWidth < MOBILE_BREAKPOINT)
+    return () => mql.removeEventListener("change", onChange)
+  }, [])
+
+  return !!isMobile
+}
+
+
+==== hooks/use-toast.ts ====
+
+"use client"
+
+// Inspired by react-hot-toast library
+import * as React from "react"
+
+import type {
+  ToastActionElement,
+  ToastProps,
+} from "@/components/ui/toast"
+
+const TOAST_LIMIT = 1
+const TOAST_REMOVE_DELAY = 1000000
+
+type ToasterToast = ToastProps & {
+  id: string
+  title?: React.ReactNode
+  description?: React.ReactNode
+  action?: ToastActionElement
+}
+
+const actionTypes = {
+  ADD_TOAST: "ADD_TOAST",
+  UPDATE_TOAST: "UPDATE_TOAST",
+  DISMISS_TOAST: "DISMISS_TOAST",
+  REMOVE_TOAST: "REMOVE_TOAST",
+} as const
+
+let count = 0
+
+function genId() {
+  count = (count + 1) % Number.MAX_SAFE_INTEGER
+  return count.toString()
+}
+
+type ActionType = typeof actionTypes
+
+type Action =
+  | {
+      type: ActionType["ADD_TOAST"]
+      toast: ToasterToast
+    }
+  | {
+      type: ActionType["UPDATE_TOAST"]
+      toast: Partial<ToasterToast>
+    }
+  | {
+      type: ActionType["DISMISS_TOAST"]
+      toastId?: ToasterToast["id"]
+    }
+  | {
+      type: ActionType["REMOVE_TOAST"]
+      toastId?: ToasterToast["id"]
+    }
+
+interface State {
+  toasts: ToasterToast[]
+}
+
+const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
+
+const addToRemoveQueue = (toastId: string) => {
+  if (toastTimeouts.has(toastId)) {
+    return
+  }
+
+  const timeout = setTimeout(() => {
+    toastTimeouts.delete(toastId)
+    dispatch({
+      type: "REMOVE_TOAST",
+      toastId: toastId,
+    })
+  }, TOAST_REMOVE_DELAY)
+
+  toastTimeouts.set(toastId, timeout)
+}
+
+export const reducer = (state: State, action: Action): State => {
+  switch (action.type) {
+    case "ADD_TOAST":
+      return {
+        ...state,
+        toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
+      }
+
+    case "UPDATE_TOAST":
+      return {
+        ...state,
+        toasts: state.toasts.map((t) =>
+          t.id === action.toast.id ? { ...t, ...action.toast } : t
+        ),
+      }
+
+    case "DISMISS_TOAST": {
+      const { toastId } = action
+
+      // ! Side effects ! - This could be extracted into a dismissToast() action,
+      // but I'll keep it here for simplicity
+      if (toastId) {
+        addToRemoveQueue(toastId)
+      } else {
+        state.toasts.forEach((toast) => {
+          addToRemoveQueue(toast.id)
+        })
+      }
+
+      return {
+        ...state,
+        toasts: state.toasts.map((t) =>
+          t.id === toastId || toastId === undefined
+            ? {
+                ...t,
+                open: false,
+              }
+            : t
+        ),
+      }
+    }
+    case "REMOVE_TOAST":
+      if (action.toastId === undefined) {
+        return {
+          ...state,
+          toasts: [],
+        }
+      }
+      return {
+        ...state,
+        toasts: state.toasts.filter((t) => t.id !== action.toastId),
+      }
+  }
+}
+
+const listeners: Array<(state: State) => void> = []
+
+let memoryState: State = { toasts: [] }
+
+function dispatch(action: Action) {
+  memoryState = reducer(memoryState, action)
+  listeners.forEach((listener) => {
+    listener(memoryState)
+  })
+}
+
+type Toast = Omit<ToasterToast, "id">
+
+function toast({ ...props }: Toast) {
+  const id = genId()
+
+  const update = (props: ToasterToast) =>
+    dispatch({
+      type: "UPDATE_TOAST",
+      toast: { ...props, id },
+    })
+  const dismiss = () => dispatch({ type: "DISMISS_TOAST", toastId: id })
+
+  dispatch({
+    type: "ADD_TOAST",
+    toast: {
+      ...props,
+      id,
+      open: true,
+      onOpenChange: (open) => {
+        if (!open) dismiss()
+      },
+    },
+  })
+
+  return {
+    id: id,
+    dismiss,
+    update,
+  }
+}
+
+function useToast() {
+  const [state, setState] = React.useState<State>(memoryState)
+
+  React.useEffect(() => {
+    listeners.push(setState)
+    return () => {
+      const index = listeners.indexOf(setState)
+      if (index > -1) {
+        listeners.splice(index, 1)
+      }
+    }
+  }, [state])
+
+  return {
+    ...state,
+    toast,
+    dismiss: (toastId?: string) => dispatch({ type: "DISMISS_TOAST", toastId }),
+  }
+}
+
+export { useToast, toast }
+
+
+==== lib/prisma.ts ====
+
+import { PrismaClient } from "@prisma/client";
+
+// PrismaClient is attached to the `global` object in development to prevent
+// exhausting your database connection limit.
+const globalForPrisma = global as unknown as { prisma: PrismaClient };
+
+export const prisma = globalForPrisma.prisma || new PrismaClient();
+
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+
+export default prisma;
+
+
+==== lib/utils.ts ====
+
+import { clsx, type ClassValue } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
+}
+
+
+==== prisma/migrations/20250328040627_init/migration.sql ====
+
+-- CreateTable
+CREATE TABLE "Keyword" (
+    "id" TEXT NOT NULL,
+    "term" TEXT NOT NULL,
+    "definition" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Keyword_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "Comment" (
+    "id" TEXT NOT NULL,
+    "content" TEXT NOT NULL,
+    "documentName" TEXT NOT NULL,
+    "documentPage" INTEGER NOT NULL,
+    "author" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Comment_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "BlogPost" (
+    "id" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "slug" TEXT NOT NULL,
+    "content" TEXT NOT NULL,
+    "excerpt" TEXT NOT NULL,
+    "author" TEXT NOT NULL,
+    "published" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "BlogPost_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "Keyword_term_key" ON "Keyword"("term");
+
+-- CreateIndex
+CREATE INDEX "Comment_documentName_documentPage_idx" ON "Comment"("documentName", "documentPage");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "BlogPost_slug_key" ON "BlogPost"("slug");
+
+
+==== services/blog-service.ts ====
+
+import prisma from "@/lib/prisma";
+import type { BlogPost } from "@prisma/client";
+
+// Initial sample blog posts
+const initialBlogPosts = [
+  {
+    title: "Understanding Vermont's Healthcare Reform Initiatives",
+    slug: "understanding-vermont-healthcare-reform",
+    content: `# Understanding Vermont's Healthcare Reform Initiatives
+
+Vermont has been at the forefront of healthcare reform in the United States, implementing innovative approaches to improve access, quality, and affordability of healthcare services for its residents.
+
+## Key Initiatives
+
+### Green Mountain Care Board
+
+The Green Mountain Care Board (GMCB) was established in 2011 as an independent group to oversee the development of health care policy in Vermont. The board has regulatory authority over healthcare system costs and has been instrumental in implementing various reform initiatives.
+
+### All-Payer Model
+
+Vermont's All-Payer Model is a unique approach that brings together Medicare, Medicaid, and commercial insurers to pay for healthcare in the same way. This model aims to:
+
+- Shift from fee-for-service to value-based payments
+- Improve population health outcomes
+- Reduce healthcare costs
+- Enhance the patient experience
+
+### Blueprint for Health
+
+The Blueprint for Health is a state-led initiative that works to integrate care across the healthcare spectrum. It focuses on:
+
+- Patient-centered medical homes
+- Community health teams
+- Self-management support programs
+- Health information technology
+
+## Challenges and Opportunities
+
+Despite significant progress, Vermont's healthcare reform efforts face several challenges:
+
+1. **Rural Access**: Ensuring access to healthcare services in rural areas remains difficult
+2. **Workforce Shortages**: Addressing shortages of healthcare providers, particularly in primary care
+3. **Cost Containment**: Continuing to control healthcare costs while maintaining quality
+4. **Integration**: Further integrating physical health, mental health, and substance use disorder services
+
+## Looking Ahead
+
+As Vermont continues its healthcare reform journey, several opportunities exist:
+
+- Expanding telehealth services to reach underserved populations
+- Strengthening primary care infrastructure
+- Enhancing data analytics capabilities to drive improvement
+- Developing innovative payment models that reward value over volume
+
+Vermont's experience offers valuable lessons for other states considering healthcare reform initiatives. By focusing on collaboration, innovation, and a commitment to improving population health, Vermont continues to lead the way in transforming healthcare delivery and financing.`,
+    excerpt:
+      "An overview of the key healthcare reform initiatives in Vermont and their impact on residents and providers.",
+    author: "Jane Smith",
+    published: true,
+  },
+  {
+    title: "The Role of Green Mountain Care Board in Healthcare Policy",
+    slug: "role-of-green-mountain-care-board",
+    content: `# The Role of Green Mountain Care Board in Healthcare Policy
+
+The Green Mountain Care Board (GMCB) plays a pivotal role in shaping healthcare policy in Vermont. Established in 2011, the board serves as an independent regulatory entity with broad authority over the state's healthcare system.
+
+## Board Composition and Structure
+
+The GMCB consists of five members appointed by the governor and confirmed by the state senate. Members serve six-year terms and bring diverse expertise in healthcare policy, finance, and delivery systems. The board is supported by a professional staff with backgrounds in data analysis, law, and healthcare administration.
+
+## Key Responsibilities
+
+### Rate Review
+
+One of the GMCB's primary functions is reviewing and approving health insurance premium rates. This process involves:
+
+- Analyzing proposed rate increases from insurers
+- Evaluating the reasonableness of administrative costs
+- Assessing the impact on consumers and the market
+- Making adjustments to ensure rates are fair and affordable
+
+### Hospital Budget Review
+
+The board has authority to review and approve hospital budgets, which includes:
+
+- Setting targets for hospital revenue growth
+- Evaluating capital expenditure plans
+- Monitoring compliance with approved budgets
+- Implementing corrective actions when necessary
+
+### Certificate of Need
+
+The GMCB oversees the certificate of need (CON) process, which requires healthcare facilities to obtain approval before making significant capital investments or offering new services. This helps prevent unnecessary duplication of services and controls healthcare costs.
+
+### All-Payer Model Implementation
+
+The board plays a central role in implementing Vermont's All-Payer Model, which aims to align payment methodologies across Medicare, Medicaid, and commercial insurers. This includes:
+
+- Setting quality and cost targets
+- Monitoring performance metrics
+- Adjusting payment methodologies as needed
+- Reporting outcomes to state and federal partners
+
+## Impact on Healthcare Reform
+
+The GMCB has contributed significantly to Vermont's healthcare reform efforts by:
+
+1. **Controlling Costs**: Through rate review and budget oversight, the board has helped moderate healthcare cost growth
+2. **Improving Transparency**: Public hearings and data reporting have enhanced transparency in healthcare pricing and quality
+3. **Promoting Innovation**: The board has supported pilot programs and payment reforms that incentivize value over volume
+4. **Enhancing Coordination**: By aligning incentives across payers, the GMCB has fostered greater coordination in the healthcare system
+
+## Challenges and Criticisms
+
+Despite its accomplishments, the GMCB faces several challenges:
+
+- Balancing regulatory oversight with market flexibility
+- Addressing the unique needs of rural providers
+- Coordinating with other state and federal agencies
+- Measuring and demonstrating the impact of its policies
+
+## Future Directions
+
+Looking ahead, the GMCB is likely to focus on:
+
+- Further integration of mental health and substance use disorder services
+- Expanding value-based payment models
+- Addressing healthcare workforce shortages
+- Leveraging data analytics to drive improvement
+
+The Green Mountain Care Board remains a cornerstone of Vermont's approach to healthcare reform, serving as a model for other states seeking to enhance regulatory oversight and promote system-wide transformation.`,
+    excerpt:
+      "Exploring how the Green Mountain Care Board shapes healthcare policy and ensures quality care for Vermonters.",
+    author: "John Doe",
+    published: true,
+  },
+  {
+    title: "Medicaid Expansion: Benefits and Challenges",
+    slug: "medicaid-expansion-benefits-challenges",
+    content: `# Medicaid Expansion: Benefits and Challenges
+
+Medicaid expansion has been a cornerstone of healthcare reform efforts in Vermont and across the United States. This analysis examines the benefits, challenges, and future outlook of Medicaid expansion in Vermont.
+
+## Background
+
+Medicaid is a joint federal-state program that provides health coverage to eligible low-income adults, children, pregnant women, elderly adults, and people with disabilities. The Affordable Care Act (ACA) of 2010 expanded Medicaid eligibility to include adults with incomes up to 138% of the federal poverty level.
+
+Vermont was one of the first states to implement Medicaid expansion, beginning in 2014. The state had already established a strong foundation for public health insurance through its Vermont Health Access Plan (VHAP) and other programs.
+
+## Benefits of Medicaid Expansion
+
+### Increased Coverage
+
+Medicaid expansion has significantly reduced the uninsured rate in Vermont. Prior to expansion, approximately 7% of Vermonters lacked health insurance. By 2019, this rate had dropped to less than 4%, one of the lowest in the nation.
+
+### Improved Health Outcomes
+
+Research has shown that Medicaid expansion is associated with:
+
+- Earlier detection of chronic conditions
+- Improved management of diabetes, hypertension, and other chronic diseases
+- Reduced mortality rates
+- Increased access to mental health and substance use disorder treatment
+
+### Economic Benefits
+
+Medicaid expansion has provided economic benefits to Vermont, including:
+
+- Increased federal funding flowing into the state
+- Reduced uncompensated care costs for hospitals
+- Job creation in the healthcare sector
+- Improved financial security for low-income families
+
+### Rural Healthcare Support
+
+In rural areas of Vermont, Medicaid expansion has helped sustain healthcare facilities that might otherwise struggle financially. This has preserved access to care in underserved communities.
+
+## Challenges
+
+### Fiscal Sustainability
+
+While the federal government initially covered 100% of the costs for newly eligible Medicaid enrollees, this match has gradually decreased to 90%. Vermont must allocate state funds to cover the remaining 10%, which presents budgetary challenges.
+
+### Provider Participation
+
+Medicaid reimbursement rates are typically lower than those of private insurance, which can discourage provider participation. This can limit access to care for Medicaid beneficiaries, particularly for specialty services.
+
+### Administrative Complexity
+
+The Medicaid program involves complex eligibility rules, enrollment procedures, and reporting requirements. This administrative burden affects both the state and healthcare providers.
+
+### Workforce Shortages
+
+Vermont faces healthcare workforce shortages, particularly in primary care, mental health, and certain specialties. Medicaid expansion has increased demand for services, exacerbating these shortages.
+
+## Future Outlook
+
+As Vermont continues to implement and refine Medicaid expansion, several key considerations will shape its future:
+
+### Integration with Payment Reform
+
+Vermont is working to integrate Medicaid into broader payment reform initiatives, such as the All-Payer Model. This aims to align incentives across payers and promote value-based care.
+
+### Addressing Social Determinants of Health
+
+There is growing recognition that health outcomes are influenced by social factors such as housing, food security, and transportation. Future Medicaid initiatives may incorporate strategies to address these social determinants of health.
+
+### Telehealth Expansion
+
+The COVID-19 pandemic accelerated the adoption of telehealth services. Continued expansion of telehealth could improve access to care for Medicaid beneficiaries, particularly in rural areas.
+
+### Federal Policy Changes
+
+Changes in federal Medicaid policy could significantly impact Vermont's program. The state must remain adaptable to potential changes in funding, eligibility requirements, or program structure.
+
+## Conclusion
+
+Medicaid expansion has been a transformative component of Vermont's healthcare reform efforts, significantly reducing the uninsured rate and improving access to care. While challenges remain, particularly related to fiscal sustainability and workforce capacity, the program continues to evolve to meet the healthcare needs of Vermonters.
+
+The experience of Vermont offers valuable insights for other states considering or implementing Medicaid expansion, highlighting both the benefits and the ongoing challenges of expanding public health insurance coverage.`,
+    excerpt:
+      "A detailed analysis of Medicaid expansion in Vermont, including its benefits, challenges, and future outlook.",
+    author: "Sarah Johnson",
+    published: true,
+  },
+  {
+    title: "Rural Healthcare Access in Vermont",
+    slug: "rural-healthcare-access-vermont",
+    excerpt:
+      "Examining the challenges of healthcare access in rural Vermont communities and potential solutions.",
+    author: "Michael Brown",
+    published: true,
+    content: "Content for rural healthcare access article...",
+  },
+  {
+    title: "Value-Based Payment Models in Vermont",
+    slug: "value-based-payment-models-vermont",
+    excerpt:
+      "How value-based payment models are transforming healthcare delivery and financing in Vermont.",
+    author: "Emily Wilson",
+    published: true,
+    content: "Content for value-based payment models article...",
+  },
+];
+
+/**
+ * Service for managing blog posts
+ */
+export class BlogService {
+  /**
+   * Get all blog posts
+   */
+  static async getBlogPosts(): Promise<BlogPost[]> {
+    const count = await prisma.blogPost.count();
+
+    // Seed initial data if the database is empty
+    if (count === 0) {
+      await prisma.blogPost.createMany({
+        data: initialBlogPosts,
+      });
+    }
+
+    return prisma.blogPost.findMany({
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  /**
+   * Get a blog post by slug
+   */
+  static async getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
+    return prisma.blogPost.findUnique({
+      where: { slug: slug.toLowerCase().trim() },
+    });
+  }
+
+  /**
+   * Get a blog post by ID
+   */
+  static async getBlogPostById(id: string): Promise<BlogPost | null> {
+    return prisma.blogPost.findUnique({
+      where: { id },
+    });
+  }
+
+  /**
+   * Add a new blog post
+   */
+  static async addBlogPost(
+    title: string,
+    slug: string,
+    content: string,
+    excerpt = "",
+    author = "Anonymous",
+    published = false
+  ): Promise<BlogPost> {
+    return prisma.blogPost.create({
+      data: {
+        title,
+        slug: slug.toLowerCase().trim(),
+        content,
+        excerpt,
+        author,
+        published,
+      },
+    });
+  }
+
+  /**
+   * Update a blog post
+   */
+  static async updateBlogPost(
+    id: string,
+    data: Partial<BlogPost>
+  ): Promise<BlogPost> {
+    // If slug is being updated, ensure it's lowercase and trimmed
+    if (data.slug) {
+      data.slug = data.slug.toLowerCase().trim();
+    }
+
+    return prisma.blogPost.update({
+      where: { id },
+      data,
+    });
+  }
+
+  /**
+   * Remove a blog post by ID
+   */
+  static async removeBlogPost(id: string): Promise<void> {
+    await prisma.blogPost.delete({
+      where: { id },
+    });
+  }
+}
+
+
+==== services/comment-service.ts ====
+
+import prisma from "@/lib/prisma";
+import type { Comment } from "@prisma/client";
+
+// Initial sample comments
+const initialComments = [
+  {
+    content: "This section on payment reform is particularly interesting.",
+    documentName: "Vermont Healthcare Reform Act 2023",
+    documentPage: 12,
+    author: "Jane Smith",
+  },
+  {
+    content:
+      "The implications for rural healthcare providers should be examined more closely.",
+    documentName: "Vermont Healthcare Reform Act 2023",
+    documentPage: 15,
+    author: "John Doe",
+  },
+];
+
+/**
+ * Service for managing document comments
+ */
+export class CommentService {
+  /**
+   * Get comments, optionally filtered by document name and page
+   */
+  static async getComments(
+    documentName?: string,
+    documentPage?: number
+  ): Promise<Comment[]> {
+    const count = await prisma.comment.count();
+
+    // Seed initial data if the database is empty
+    if (count === 0) {
+      await prisma.comment.createMany({
+        data: initialComments,
+      });
+    }
+
+    // Build the query based on filters
+    const where: any = {};
+
+    if (documentName) {
+      where.documentName = documentName;
+
+      if (documentPage !== undefined) {
+        where.documentPage = documentPage;
+      }
+    }
+
+    return prisma.comment.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+    });
+  }
+
+  /**
+   * Add a new comment
+   */
+  static async addComment(
+    content: string,
+    documentName: string,
+    documentPage: number,
+    author: string
+  ): Promise<Comment> {
+    return prisma.comment.create({
+      data: {
+        content,
+        documentName,
+        documentPage,
+        author,
+      },
+    });
+  }
+
+  /**
+   * Remove a comment by ID
+   */
+  static async removeComment(id: string): Promise<void> {
+    await prisma.comment.delete({
+      where: { id },
+    });
+  }
+
+  /**
+   * Get a comment by ID
+   */
+  static async getCommentById(id: string): Promise<Comment | null> {
+    return prisma.comment.findUnique({
+      where: { id },
+    });
+  }
+}
+
+
+==== services/keyword-service.ts ====
+
+import prisma from "@/lib/prisma";
+import type { Keyword } from "@prisma/client";
+
+// Initial sample keywords
+const initialKeywords = [
+  {
+    term: "green mountain care board",
+    definition:
+      "An independent group created by the Vermont Legislature in 2011 to oversee the development of health care policy in Vermont.",
+  },
+  {
+    term: "medicaid",
+    definition:
+      "A joint federal and state program that helps with medical costs for some people with limited income and resources.",
+  },
+  {
+    term: "healthcare",
+    definition:
+      "The organized provision of medical care to individuals or a community.",
+  },
+  {
+    term: "reform",
+    definition: "To make changes in something in order to improve it.",
+  },
+  {
+    term: "payment models",
+    definition: "Methods of paying healthcare providers for services rendered.",
+  },
+  {
+    term: "all-payer model",
+    definition:
+      "A healthcare payment model that involves all payers (Medicare, Medicaid, commercial) using the same approach to pay providers.",
+  },
+  {
+    term: "blueprint for health",
+    definition:
+      "Vermont's state-led initiative that works to integrate care across the healthcare spectrum.",
+  },
+  {
+    term: "rural healthcare",
+    definition:
+      "Healthcare services provided in rural areas, often facing unique challenges of access and resources.",
+  },
+  {
+    term: "telehealth",
+    definition:
+      "The delivery of health care, health education, and health information services via remote technologies.",
+  },
+];
+
+/**
+ * Service for managing healthcare keywords
+ */
+export class KeywordService {
+  /**
+   * Get all keywords
+   */
+  static async getKeywords(): Promise<Keyword[]> {
+    const count = await prisma.keyword.count();
+
+    // Seed initial data if the database is empty
+    if (count === 0) {
+      await prisma.keyword.createMany({
+        data: initialKeywords,
+      });
+    }
+
+    return prisma.keyword.findMany({
+      orderBy: { term: "asc" },
+    });
+  }
+
+  /**
+   * Add a new keyword or update an existing one
+   */
+  static async addKeyword(term: string, definition: string): Promise<Keyword> {
+    // Check if keyword exists
+    const existingKeyword = await prisma.keyword.findFirst({
+      where: { term: { equals: term, mode: "insensitive" } },
+    });
+
+    if (existingKeyword) {
+      // Update existing keyword
+      return prisma.keyword.update({
+        where: { id: existingKeyword.id },
+        data: { definition },
+      });
+    } else {
+      // Add new keyword
+      return prisma.keyword.create({
+        data: { term, definition },
+      });
+    }
+  }
+
+  /**
+   * Remove a keyword by ID
+   */
+  static async removeKeyword(id: string): Promise<void> {
+    await prisma.keyword.delete({
+      where: { id },
+    });
+  }
+
+  /**
+   * Get a keyword by ID
+   */
+  static async getKeywordById(id: string): Promise<Keyword | null> {
+    return prisma.keyword.findUnique({
+      where: { id },
+    });
+  }
+
+  /**
+   * Import keywords from array
+   */
+  static async importKeywords(
+    keywords: { term: string; definition: string }[]
+  ): Promise<Keyword[]> {
+    // Use a transaction to handle the import
+    return prisma.$transaction(async (tx) => {
+      const results: Keyword[] = [];
+
+      for (const { term, definition } of keywords) {
+        // Try to find an existing keyword with the same term
+        const existing = await tx.keyword.findFirst({
+          where: { term: { equals: term, mode: "insensitive" } },
+        });
+
+        if (existing) {
+          // Update if exists
+          const updated = await tx.keyword.update({
+            where: { id: existing.id },
+            data: { definition },
+          });
+          results.push(updated);
+        } else {
+          // Create if doesn't exist
+          const created = await tx.keyword.create({
+            data: { term, definition },
+          });
+          results.push(created);
+        }
+      }
+
+      return results;
+    });
+  }
+}

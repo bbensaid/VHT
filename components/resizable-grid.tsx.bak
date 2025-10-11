@@ -1,0 +1,361 @@
+"use client";
+
+import type React from "react";
+import { useState, useRef, useEffect } from "react";
+import { GridVisibilityControls, type GridVisibilityState } from "./grid-visibility-controls";
+import { PanelControls } from "./panel-controls";
+
+interface PanelState {
+  isMinimized: boolean;
+  isMaximized: b      <div
+        className="absolute top-0 bottom-0 w-4 cursor-col-resize bg-transparent hover:bg-primary/10 z-10 transition-colors duration-200 select-none"lean;
+}
+
+interface PanelStates {
+  documentViewer: PanelState;
+  keywordHighlighter: PanelState;
+  newsHeadlines: PanelState;
+  newsArticle: PanelState;
+}
+
+const DEFAULT_VISIBILITY: GridVisibilityState = {
+  documentViewer: true,
+  keywordHighlighter: true,
+  newsHeadlines: true,
+  newsArticle: true,
+};
+
+const DEFAULT_PANEL_STATES: PanelStates = {
+  documentViewer: { isMinimized: false, isMaximized: false },
+  keywordHighlighter: { isMinimized: false, isMaximized: false },
+  newsHeadlines: { isMinimized: false, isMaximized: false },
+  newsArticle: { isMinimized: false, isMaximized: false },
+};
+
+export function ResizableGrid({ children }: { children: React.ReactNode[] }) {
+  const [gridLayout, setGridLayout] = useState({
+    topLeftHeight: 50, // percentage
+    topRightHeight: 50, // percentage
+    leftWidth: 50, // percentage
+  });
+
+  const [visibility, setVisibility] = useState<GridVisibilityState>(DEFAULT_VISIBILITY);
+  const [panelStates, setPanelStates] = useState<PanelStates>(DEFAULT_PANEL_STATES);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isDraggingHorizontal = useRef(false);
+  const isDraggingVertical = useRef(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  const toggleMinimize = (panel: keyof PanelStates) => {
+    setPanelStates((prev) => ({
+      ...prev,
+      [panel]: {
+        ...prev[panel],
+        isMinimized: !prev[panel].isMinimized,
+        isMaximized: false,
+      },
+    }));
+  };
+
+  const toggleMaximize = (panel: keyof PanelStates) => {
+    setPanelStates((prev) => {
+      // Unmaximize all other panels first
+      const updatedStates = Object.keys(prev).reduce(
+        (acc, key) => ({
+          ...acc,
+          [key]: {
+            ...prev[key as keyof PanelStates],
+            isMaximized: false,
+          },
+        }),
+        {} as PanelStates
+      );
+
+      return {
+        ...updatedStates,
+        [panel]: {
+          ...updatedStates[panel],
+          isMaximized: !prev[panel].isMaximized,
+          isMinimized: false,
+        },
+      };
+    });
+  };
+
+  const closePanel = (panel: keyof PanelStates) => {
+    setVisibility((prev) => ({
+      ...prev,
+      [panel]: false,
+    }));
+  };
+
+  // Check if we're on a mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  const handleHorizontalResize = (e: MouseEvent | TouchEvent) => {
+    if (!isDraggingHorizontal.current || !containerRef.current) return;
+
+    const containerWidth = containerRef.current.clientWidth;
+    let clientX: number;
+
+    if ("touches" in e) {
+      clientX = e.touches[0].clientX;
+    } else {
+      clientX = e.clientX;
+    }
+
+    const newLeftWidth = (clientX / containerWidth) * 100;
+
+    // Limit the minimum size
+    if (newLeftWidth > 20 && newLeftWidth < 80) {
+      setGridLayout((prev) => ({
+        ...prev,
+        leftWidth: newLeftWidth,
+      }));
+    }
+  };
+
+  const handleVerticalResize = (e: MouseEvent | TouchEvent) => {
+    if (!isDraggingVertical.current || !containerRef.current) return;
+
+    const containerHeight = containerRef.current.clientHeight;
+    let clientY: number;
+
+    if ("touches" in e) {
+      clientY = e.touches[0].clientY;
+    } else {
+      clientY = e.clientY;
+    }
+
+    const newTopHeight = (clientY / containerHeight) * 100;
+
+    // Limit the minimum size
+    if (newTopHeight > 20 && newTopHeight < 80) {
+      setGridLayout((prev) => ({
+        ...prev,
+        topLeftHeight: newTopHeight,
+        topRightHeight: newTopHeight,
+      }));
+    }
+  };
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      handleHorizontalResize(e);
+      handleVerticalResize(e);
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      handleHorizontalResize(e);
+      handleVerticalResize(e);
+    };
+
+    const handleEnd = () => {
+      isDraggingHorizontal.current = false;
+      isDraggingVertical.current = false;
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleEnd);
+    document.addEventListener("touchmove", handleTouchMove);
+    document.addEventListener("touchend", handleEnd);
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleEnd);
+      document.removeEventListener("touchmove", handleTouchMove);
+      document.removeEventListener("touchend", handleEnd);
+    };
+  }, []);
+
+  // For mobile devices, stack the panels vertically
+  if (isMobile) {
+    return (
+      <div className="flex flex-col space-y-4">
+        <GridVisibilityControls visibility={visibility} onChange={setVisibility} />
+        <div ref={containerRef} className="w-full h-full flex flex-col gap-4">
+          {visibility.documentViewer && (
+            <div className="flex-1 min-h-[300px] overflow-hidden rounded-lg border bg-background shadow">
+              {children[0]}
+            </div>
+          )}
+          {visibility.keywordHighlighter && (
+            <div className="flex-1 min-h-[300px] overflow-hidden rounded-lg border bg-background shadow">
+              {children[1]}
+            </div>
+          )}
+          {visibility.newsHeadlines && (
+            <div className="flex-1 min-h-[300px] overflow-hidden rounded-lg border bg-background shadow">
+              {children[2]}
+            </div>
+          )}
+          {visibility.newsArticle && (
+            <div className="flex-1 min-h-[300px] overflow-hidden rounded-lg border bg-background shadow">
+              {children[3]}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col space-y-4">
+      <GridVisibilityControls visibility={visibility} onChange={setVisibility} />
+      <div ref={containerRef} className="w-full h-full relative">
+        {/* Document Viewer */}
+        {visibility.documentViewer && (
+          <div
+            className="absolute top-0 left-0 overflow-hidden rounded-lg border bg-background shadow"
+            style={{
+              width: `${gridLayout.leftWidth}%`,
+              height: `${gridLayout.topLeftHeight}%`,
+              padding: "1px",
+            }}
+            aria-label="Document Viewer Panel"
+          >
+            {children[0]}
+          </div>
+        )}
+
+        {/* Keyword Highlighter */}
+        {visibility.keywordHighlighter && (
+          <div
+            className="absolute top-0 overflow-hidden rounded-lg border bg-background shadow"
+            style={{
+              left: `${gridLayout.leftWidth}%`,
+              width: `${100 - gridLayout.leftWidth}%`,
+              height: `${gridLayout.topRightHeight}%`,
+              padding: "1px",
+            }}
+            aria-label="Keyword Highlights Panel"
+          >
+            {children[1]}
+          </div>
+        )}
+
+        {/* News Headlines */}
+        {visibility.newsHeadlines && (
+          <div
+            className="absolute left-0 overflow-hidden rounded-lg border bg-background shadow"
+            style={{
+              top: `${gridLayout.topLeftHeight}%`,
+              width: `${gridLayout.leftWidth}%`,
+              height: `${100 - gridLayout.topLeftHeight}%`,
+              padding: "1px",
+            }}
+            aria-label="News Headlines Panel"
+          >
+            {children[2]}
+          </div>
+        )}
+
+        {/* News Article */}
+        {visibility.newsArticle && (
+          <div
+            className="absolute overflow-hidden rounded-lg border bg-background shadow"
+            style={{
+              top: `${gridLayout.topRightHeight}%`,
+              left: `${gridLayout.leftWidth}%`,
+              width: `${100 - gridLayout.leftWidth}%`,
+              height: `${100 - gridLayout.topRightHeight}%`,
+              padding: "1px",
+            }}
+            aria-label="News Article Panel"
+          >
+            {children[3]}
+          </div>
+        )}
+
+        {/* Resize Handles */}
+        {(!isMobile && visibility.documentViewer && (visibility.keywordHighlighter || visibility.newsArticle)) && (
+          <div
+            className="absolute top-0 bottom-0 w-4 cursor-col-resize bg-transparent hover:bg-primary/10 z-10 transition-colors duration-200 select-none"
+        style={{ left: `calc(${gridLayout.leftWidth}% - 8px)` }}
+        onMouseDown={() => {
+          isDraggingHorizontal.current = true;
+        }}
+        onTouchStart={() => {
+          isDraggingHorizontal.current = true;
+        }}
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize panels horizontally"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowLeft") {
+            setGridLayout((prev) => ({
+              ...prev,
+              leftWidth: Math.max(20, prev.leftWidth - 1),
+            }));
+          } else if (e.key === "ArrowRight") {
+            setGridLayout((prev) => ({
+              ...prev,
+              leftWidth: Math.min(80, prev.leftWidth + 1),
+            }));
+          }
+        }}
+      />
+
+      {/* Vertical resize handle */}
+      <div
+        className="absolute left-0 right-0 h-4 cursor-row-resize bg-transparent hover:bg-primary/10 z-10 transition-colors duration-200"
+        style={{ top: `calc(${gridLayout.topLeftHeight}% - 8px)` }}
+        onMouseDown={() => {
+          isDraggingVertical.current = true;
+        }}
+        onTouchStart={() => {
+          isDraggingVertical.current = true;
+        }}
+        role="separator"
+        aria-orientation="horizontal"
+        aria-label="Resize panels vertically"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "ArrowUp") {
+            setGridLayout((prev) => ({
+              ...prev,
+              topLeftHeight: Math.max(20, prev.topLeftHeight - 1),
+              topRightHeight: Math.max(20, prev.topRightHeight - 1),
+            }));
+          } else if (e.key === "ArrowDown") {
+            setGridLayout((prev) => ({
+              ...prev,
+              topLeftHeight: Math.min(80, prev.topLeftHeight + 1),
+              topRightHeight: Math.min(80, prev.topRightHeight + 1),
+            }));
+          }
+        }}
+      />
+
+      {/* Intersection handle */}
+      <div
+        className="absolute w-8 h-8 cursor-move bg-transparent hover:bg-primary/20 z-20 rounded-full transition-colors duration-200"
+        style={{
+          left: `calc(${gridLayout.leftWidth}% - 16px)`,
+          top: `calc(${gridLayout.topLeftHeight}% - 16px)`,
+        }}
+        onMouseDown={() => {
+          isDraggingHorizontal.current = true;
+          isDraggingVertical.current = true;
+        }}
+        onTouchStart={() => {
+          isDraggingHorizontal.current = true;
+          isDraggingVertical.current = true;
+        }}
+        aria-label="Resize panels in both directions"
+        tabIndex={0}
+      />
+    </div>
+  );
+}
