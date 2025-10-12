@@ -412,21 +412,7 @@ export function ResizableGrid({ children }: { children: React.ReactNode[] }) {
                 onClick={() => handleMaximize('topLeft')}
                 className="bg-background/80 p-1 rounded hover:bg-background text-xs"
               >
-                {maximizedPanel === 'topLeft' ? '−' : '+'}
-              </button>
-              <button
-                onClick={() => {
-                  setGridLayout((prev) => ({
-                    ...prev,
-                    topLeftHeight: 50,
-                    bottomLeftHeight: 50,
-                  }));
-                  setPanelVisibility((prev) => ({ ...prev, topLeft: true }));
-                  setMaximizedPanel(null);
-                }}
-                className="bg-background/80 p-1 rounded hover:bg-background text-xs"
-              >
-                −
+                {maximizedPanel === 'topLeft' ? '−' : '▢'}
               </button>
               <button
                 onClick={() =>
@@ -483,21 +469,7 @@ export function ResizableGrid({ children }: { children: React.ReactNode[] }) {
                 onClick={() => handleMaximize('topRight')}
                 className="bg-background/80 p-1 rounded hover:bg-background text-xs"
               >
-                {maximizedPanel === 'topRight' ? '−' : '+'}
-              </button>
-              <button
-                onClick={() => {
-                  setGridLayout((prev) => ({
-                    ...prev,
-                    topRightHeight: 50,
-                    bottomRightHeight: 50,
-                  }));
-                  setPanelVisibility((prev) => ({ ...prev, topRight: true }));
-                  setMaximizedPanel(null);
-                }}
-                className="bg-background/80 p-1 rounded hover:bg-background text-xs"
-              >
-                −
+                {maximizedPanel === 'topRight' ? '−' : '▢'}
               </button>
               <button
                 onClick={() =>
@@ -554,21 +526,7 @@ export function ResizableGrid({ children }: { children: React.ReactNode[] }) {
                 onClick={() => handleMaximize('bottomLeft')}
                 className="bg-background/80 p-1 rounded hover:bg-background text-xs"
               >
-                {maximizedPanel === 'bottomLeft' ? '−' : '+'}
-              </button>
-              <button
-                onClick={() => {
-                  setGridLayout((prev) => ({
-                    ...prev,
-                    topLeftHeight: 50,
-                    bottomLeftHeight: 50,
-                  }));
-                  setPanelVisibility((prev) => ({ ...prev, bottomLeft: true }));
-                  setMaximizedPanel(null);
-                }}
-                className="bg-background/80 p-1 rounded hover:bg-background text-xs"
-              >
-                −
+                {maximizedPanel === 'bottomLeft' ? '−' : '▢'}
               </button>
               <button
                 onClick={() =>
@@ -625,21 +583,7 @@ export function ResizableGrid({ children }: { children: React.ReactNode[] }) {
                 onClick={() => handleMaximize('bottomRight')}
                 className="bg-background/80 p-1 rounded hover:bg-background text-xs"
               >
-                {maximizedPanel === 'bottomRight' ? '−' : '+'}
-              </button>
-              <button
-                onClick={() => {
-                  setGridLayout((prev) => ({
-                    ...prev,
-                    topRightHeight: 50,
-                    bottomRightHeight: 50,
-                  }));
-                  setPanelVisibility((prev) => ({ ...prev, bottomRight: true }));
-                  setMaximizedPanel(null);
-                }}
-                className="bg-background/80 p-1 rounded hover:bg-background text-xs"
-              >
-                −
+                {maximizedPanel === 'bottomRight' ? '−' : '▢'}
               </button>
               <button
                 onClick={() =>
