@@ -65,7 +65,7 @@ export function PageLayout({
           <ul className="list-disc pl-5 space-y-2">
             <li>Click on a blog post title to read the full article</li>
             <li>Use the search box to find specific topics</li>
-            <li>Click "New Post" to create your own blog post</li>
+            <li>Click &quot;New Post&quot; to create your own blog post</li>
             <li>You can filter posts by category using the dropdown menu</li>
           </ul>
         </div>
@@ -77,7 +77,7 @@ export function PageLayout({
           <p>This page allows you to view and add comments on documents.</p>
           <ul className="list-disc pl-5 space-y-2">
             <li>Comments are organized by document and page number</li>
-            <li>Click "Add Comment" to contribute your thoughts</li>
+            <li>Click &quot;Add Comment&quot; to contribute your thoughts</li>
             <li>You can edit or delete your own comments</li>
             <li>Use the filter options to find specific comments</li>
           </ul>

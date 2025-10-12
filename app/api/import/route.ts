@@ -3,6 +3,9 @@ import { KeywordService } from "@/services/keyword-service";
 import Papa from "papaparse";
 import * as ExcelJS from "exceljs";
 
+type CSVRecord = Record<string, unknown>;
+type KeywordRecord = { term: string; definition: string };
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
@@ -56,9 +59,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Map CSV records to keywords
-      keywords = mapRecordsToKeywords(
-        parseResult.data as Record<string, any>[]
-      );
+      keywords = mapRecordsToKeywords(parseResult.data as CSVRecord[]);
     } else {
       // Handle Excel files with ExcelJS
       try {
@@ -76,7 +77,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Extract headers and data
-        const records: Record<string, any>[] = [];
+        const records: CSVRecord[] = [];
         const headers: string[] = [];
 
         // Get headers from first row
@@ -91,7 +92,7 @@ export async function POST(request: NextRequest) {
         worksheet.eachRow((row, rowNumber) => {
           if (rowNumber > 1) {
             // Skip header row
-            const record: Record<string, any> = {};
+            const record: CSVRecord = {};
             row.eachCell((cell, colNumber) => {
               if (headers[colNumber]) {
                 record[headers[colNumber]] = cell.value
@@ -166,9 +167,7 @@ export async function POST(request: NextRequest) {
 /**
  * Maps records from various formats to keyword objects
  */
-function mapRecordsToKeywords(
-  records: Record<string, any>[]
-): { term: string; definition: string }[] {
+function mapRecordsToKeywords(records: CSVRecord[]): KeywordRecord[] {
   return records.map((record) => {
     // Try different possible column names for term
     let term = "";

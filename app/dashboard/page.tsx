@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  type LucideIcon,
   FileText,
   Users,
   BarChart2,
@@ -196,7 +197,7 @@ function DashboardCard({
   title: string;
   value: string;
   description: string;
-  icon: any;
+  icon: LucideIcon;
   trend: string;
   trendUp: boolean;
 }) {

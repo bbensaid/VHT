@@ -40,7 +40,13 @@ type BlogPost = {
   slug: string;
   content: string;
   excerpt: string;
-  author: string;
+  author: {
+    id: string;
+    name: string | null;
+    email: string | null;
+    image: string | null;
+  } | null;
+  authorId: string | null;
   createdAt: string;
   updatedAt: string;
   published: boolean;
@@ -214,7 +220,7 @@ export default function BlogPostPage() {
         <Card className="max-w-md mx-auto">
           <CardHeader>
             <CardTitle>Error</CardTitle>
-            <CardDescription>We couldn't load this blog post</CardDescription>
+            <CardDescription>We couldn&apos;t load this blog post</CardDescription>
           </CardHeader>
           <CardContent>
             <p>{error}</p>
@@ -234,7 +240,7 @@ export default function BlogPostPage() {
             <div className="flex flex-wrap gap-4 text-muted-foreground">
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4" />
-                {post.author}
+                {post.author?.name || "Anonymous"}
               </div>
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4" />

@@ -35,7 +35,15 @@ The grants will help health centers enhance primary care services, expand mental
 "Community health centers are the backbone of our healthcare safety net," said a spokesperson for the Vermont Department of Health. "This funding will strengthen their ability to serve vulnerable populations throughout the state."`,
 };
 
-export function NewsArticle({ article }: { article: any | null }) {
+type NewsArticleData = {
+  id: number;
+  title: string;
+  date: string;
+  source: string;
+  summary: string;
+};
+
+export function NewsArticle({ article }: { article: NewsArticleData | null }) {
   if (!article) {
     return (
       <div className="flex flex-col h-full">

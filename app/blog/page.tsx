@@ -38,7 +38,13 @@ type BlogPost = {
   title: string;
   slug: string;
   excerpt: string;
-  author: string;
+  author: {
+    id: string;
+    name: string | null;
+    email: string | null;
+    image: string | null;
+  } | null;
+  authorId: string | null;
   createdAt: string;
   published: boolean;
 };
@@ -51,7 +57,8 @@ const fallbackPosts: BlogPost[] = [
     slug: "understanding-vermont-healthcare-reform",
     excerpt:
       "An overview of the key healthcare reform initiatives in Vermont and their impact on residents and providers.",
-    author: "Jane Smith",
+    author: { id: "1", name: "Jane Smith", email: null, image: null },
+    authorId: null,
     createdAt: new Date().toISOString(),
     published: true,
   },
@@ -61,7 +68,8 @@ const fallbackPosts: BlogPost[] = [
     slug: "role-of-green-mountain-care-board",
     excerpt:
       "Exploring how the Green Mountain Care Board shapes healthcare policy and ensures quality care for Vermonters.",
-    author: "John Doe",
+    author: { id: "2", name: "John Doe", email: null, image: null },
+    authorId: null,
     createdAt: new Date().toISOString(),
     published: true,
   },
@@ -71,7 +79,8 @@ const fallbackPosts: BlogPost[] = [
     slug: "medicaid-expansion-benefits-challenges",
     excerpt:
       "A detailed analysis of Medicaid expansion in Vermont, including its benefits, challenges, and future outlook.",
-    author: "Sarah Johnson",
+    author: { id: "3", name: "Sarah Johnson", email: null, image: null },
+    authorId: null,
     createdAt: new Date().toISOString(),
     published: true,
   },
@@ -132,15 +141,17 @@ export default function BlogPage() {
         (post) =>
           post.title.toLowerCase().includes(term) ||
           post.excerpt.toLowerCase().includes(term) ||
-          post.author.toLowerCase().includes(term)
+          (post.author?.name?.toLowerCase().includes(term) ?? false)
       );
     }
 
     if (category !== "all") {
       // This is a placeholder - in a real app, you'd have categories in your data model
       // For now, we'll just simulate filtering by author as a category
-      result = result.filter((post) =>
-        post.author.toLowerCase().includes(category.toLowerCase())
+      result = result.filter(
+        (post) =>
+          post.author?.name?.toLowerCase().includes(category.toLowerCase()) ??
+          false
       );
     }
 
@@ -304,7 +315,7 @@ export default function BlogPage() {
                   <CardFooter className="flex justify-between items-center">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <User className="h-4 w-4" />
-                      {post.author}
+                      {post.author?.name || "Anonymous"}
                     </div>
                     <Button variant="outline" asChild>
                       <Link href={`/blog/${post.slug}`}>Read More</Link>

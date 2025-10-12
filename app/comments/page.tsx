@@ -94,12 +94,12 @@ export default function CommentsPage() {
           throw new Error("Failed to fetch comments");
         }
 
-        const data = await response.json();
+        const data: Comment[] = await response.json();
         setComments(data);
 
         // Extract unique document names for filter
         const uniqueDocuments = Array.from(
-          new Set(data.map((comment: Comment) => comment.documentName))
+          new Set(data.map((comment) => comment.documentName))
         );
         setDocuments(uniqueDocuments);
       } catch (error) {

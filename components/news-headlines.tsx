@@ -4,6 +4,14 @@ import { useState, useEffect } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
+type NewsArticleData = {
+  id: number;
+  title: string;
+  date: string;
+  source: string;
+  summary: string;
+};
+
 // Sample news data - in a real app, this would come from an API
 const SAMPLE_NEWS = [
   {
@@ -52,7 +60,7 @@ const SAMPLE_NEWS = [
 export function NewsHeadlines({
   onArticleSelected,
 }: {
-  onArticleSelected: (article: any) => void;
+  onArticleSelected: (article: NewsArticleData) => void;
 }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filteredNews, setFilteredNews] = useState(SAMPLE_NEWS);

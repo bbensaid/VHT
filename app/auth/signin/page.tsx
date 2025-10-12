@@ -17,6 +17,8 @@ import {
 import { AlertCircle } from "lucide-react";
 import { useAuth } from "@/contexts/auth-context";
 
+export const runtime = "nodejs";
+
 export default function SignIn() {
   const router = useRouter();
   const { login } = useAuth();

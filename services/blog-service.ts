@@ -55,7 +55,7 @@ As Vermont continues its healthcare reform journey, several opportunities exist:
 Vermont's experience offers valuable lessons for other states considering healthcare reform initiatives. By focusing on collaboration, innovation, and a commitment to improving population health, Vermont continues to lead the way in transforming healthcare delivery and financing.`,
     excerpt:
       "An overview of the key healthcare reform initiatives in Vermont and their impact on residents and providers.",
-    author: "Jane Smith",
+    authorId: null,
     published: true,
   },
   {
@@ -132,7 +132,7 @@ Looking ahead, the GMCB is likely to focus on:
 The Green Mountain Care Board remains a cornerstone of Vermont's approach to healthcare reform, serving as a model for other states seeking to enhance regulatory oversight and promote system-wide transformation.`,
     excerpt:
       "Exploring how the Green Mountain Care Board shapes healthcare policy and ensures quality care for Vermonters.",
-    author: "John Doe",
+    authorId: null, // Will be set when user system is implemented
     published: true,
   },
   {
@@ -221,7 +221,7 @@ Medicaid expansion has been a transformative component of Vermont's healthcare r
 The experience of Vermont offers valuable insights for other states considering or implementing Medicaid expansion, highlighting both the benefits and the ongoing challenges of expanding public health insurance coverage.`,
     excerpt:
       "A detailed analysis of Medicaid expansion in Vermont, including its benefits, challenges, and future outlook.",
-    author: "Sarah Johnson",
+    authorId: null,
     published: true,
   },
   {
@@ -229,7 +229,7 @@ The experience of Vermont offers valuable insights for other states considering 
     slug: "rural-healthcare-access-vermont",
     excerpt:
       "Examining the challenges of healthcare access in rural Vermont communities and potential solutions.",
-    author: "Michael Brown",
+    authorId: null,
     published: true,
     content: "Content for rural healthcare access article...",
   },
@@ -238,7 +238,7 @@ The experience of Vermont offers valuable insights for other states considering 
     slug: "value-based-payment-models-vermont",
     excerpt:
       "How value-based payment models are transforming healthcare delivery and financing in Vermont.",
-    author: "Emily Wilson",
+    authorId: null,
     published: true,
     content: "Content for value-based payment models article...",
   },
@@ -249,19 +249,27 @@ The experience of Vermont offers valuable insights for other states considering 
  */
 export class BlogService {
   /**
-   * Get all blog posts
+   * Seed initial blog posts if database is empty
    */
-  static async getBlogPosts(): Promise<BlogPost[]> {
+  private static async seedInitialDataIfNeeded() {
     const count = await prisma.blogPost.count();
-
-    // Seed initial data if the database is empty
     if (count === 0) {
       await prisma.blogPost.createMany({
         data: initialBlogPosts,
       });
     }
+  }
+
+  /**
+   * Get all blog posts
+   */
+  static async getBlogPosts(): Promise<BlogPost[]> {
+    await this.seedInitialDataIfNeeded();
 
     return prisma.blogPost.findMany({
+      include: {
+        author: true,
+      },
       orderBy: { createdAt: "desc" },
     });
   }
@@ -270,8 +278,13 @@ export class BlogService {
    * Get a blog post by slug
    */
   static async getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
+    await this.seedInitialDataIfNeeded();
+
     return prisma.blogPost.findUnique({
       where: { slug: slug.toLowerCase().trim() },
+      include: {
+        author: true,
+      },
     });
   }
 
@@ -279,6 +292,8 @@ export class BlogService {
    * Get a blog post by ID
    */
   static async getBlogPostById(id: string): Promise<BlogPost | null> {
+    await this.seedInitialDataIfNeeded();
+
     return prisma.blogPost.findUnique({
       where: { id },
     });
@@ -292,7 +307,7 @@ export class BlogService {
     slug: string,
     content: string,
     excerpt = "",
-    author = "Anonymous",
+    authorId?: string,
     published = false
   ): Promise<BlogPost> {
     return prisma.blogPost.create({
@@ -301,7 +316,7 @@ export class BlogService {
         slug: slug.toLowerCase().trim(),
         content,
         excerpt,
-        author,
+        authorId,
         published,
       },
     });

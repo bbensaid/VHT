@@ -4,11 +4,10 @@ import prisma from "@/lib/prisma";
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Validate ID parameter
-    const id = params.id;
+    const { id } = await params;
     if (!id) {
       return NextResponse.json(
         { error: "Blog post ID is required" },
@@ -40,11 +39,10 @@ export async function GET(
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Validate ID parameter
-    const id = params.id;
+    const { id } = await params;
     if (!id) {
       return NextResponse.json(
         { error: "Blog post ID is required" },
@@ -105,11 +103,10 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Validate ID parameter
-    const id = params.id;
+    const { id } = await params;
     if (!id) {
       return NextResponse.json(
         { error: "Blog post ID is required" },

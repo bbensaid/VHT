@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,12 +56,9 @@ const AdminPage = () => {
   });
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedKeywordId, setSelectedKeywordId] = useState<string | null>(
-    null
-  );
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const fetchKeywords = async () => {
+  const fetchKeywords = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch("/api/keywords");
@@ -80,11 +77,11 @@ const AdminPage = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     fetchKeywords();
-  }, []);
+  }, [fetchKeywords]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>

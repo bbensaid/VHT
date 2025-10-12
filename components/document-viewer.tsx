@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -23,9 +23,11 @@ import { storeDocumentText } from "@/utils/document-state";
 // Define a global type for the PDF.js library
 declare global {
   interface Window {
-    pdfjsLib: any;
+    pdfjsLib: typeof import("pdfjs-dist");
   }
 }
+
+type TextItem = import("pdfjs-dist/types/src/display/api").TextItem;
 
 // Use dynamic import with ssr: false to prevent hydration mismatch
 const DocumentViewerContent = dynamic(
@@ -40,7 +42,6 @@ export function DocumentViewer() {
   const { toast } = useToast();
 
   // Document state
-  const [documentText, setDocumentText] = useState<string>("");
   const [documentName, setDocumentName] = useState<string>("");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [scale, setScale] = useState<number>(1.0);
@@ -51,7 +52,9 @@ export function DocumentViewer() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pdfLoaded, setPdfLoaded] = useState(false);
-  const [pdfDocument, setPdfDocument] = useState<any>(null);
+  const [pdfDocument, setPdfDocument] = useState<
+    import("pdfjs-dist").PDFDocumentProxy | null
+  >(null);
   const [showDebug, setShowDebug] = useState(false);
 
   // Refs
@@ -72,50 +75,53 @@ export function DocumentViewer() {
   };
 
   // Function to render the current PDF page
-  const renderPage = async (pageNum: number) => {
-    if (!canvasRef.current || !pdfDocument) return;
-    setError(null);
+  const renderPage = useCallback(
+    async (pageNum: number) => {
+      if (!canvasRef.current || !pdfDocument) return;
+      setError(null);
 
-    try {
-      console.log(`Rendering page ${pageNum}`);
+      try {
+        console.log(`Rendering page ${pageNum}`);
 
-      // Get the page
-      const page = await pdfDocument.getPage(pageNum);
-      const viewport = page.getViewport({ scale });
+        // Get the page
+        const page = await pdfDocument.getPage(pageNum);
+        const viewport = page.getViewport({ scale });
 
-      // Set canvas dimensions
-      const canvas = canvasRef.current;
-      const context = canvas.getContext("2d");
-      if (!context) return;
+        // Set canvas dimensions
+        const canvas = canvasRef.current;
+        const context = canvas.getContext("2d");
+        if (!context) return;
 
-      canvas.height = viewport.height;
-      canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
 
-      // Clear canvas
-      context.clearRect(0, 0, canvas.width, canvas.height);
+        // Clear canvas
+        context.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Render the page
-      await page.render({
-        canvasContext: context,
-        viewport: viewport,
-      }).promise;
+        // Render the page
+        await page.render({
+          canvasContext: context,
+          viewport: viewport,
+        }).promise;
 
-      // Extract text from the current page
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items.map((item: any) => item.str).join(" ");
+        // Extract text from the current page
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items
+          .filter((item): item is TextItem => "str" in item)
+          .map((item) => item.str)
+          .join(" ");
 
-      // Update state
-      setDocumentText(pageText);
+        // Store text using the utility function
+        storeDocumentText(pageText);
 
-      // Store text using the utility function
-      storeDocumentText(pageText);
-
-      console.log(`Page ${pageNum} rendered successfully`);
-    } catch (error) {
-      console.error("Error rendering PDF page:", error);
-      setError("Failed to render PDF page. Please try again.");
-    }
-  };
+        console.log(`Page ${pageNum} rendered successfully`);
+      } catch (error) {
+        console.error("Error rendering PDF page:", error);
+        setError("Failed to render PDF page. Please try again.");
+      }
+    },
+    [pdfDocument, scale]
+  );
 
   // Load PDF from file
   const loadPdfFromFile = async (file: File) => {
@@ -304,7 +310,7 @@ export function DocumentViewer() {
       renderPage(currentPage);
       sessionStorage.setItem("vt-document-page", currentPage.toString());
     }
-  }, [currentPage, scale, pdfDocument, totalPages]);
+  }, [currentPage, scale, pdfDocument, totalPages, renderPage]);
 
   // Update scale in sessionStorage when it changes
   useEffect(() => {
@@ -419,7 +425,6 @@ export function DocumentViewer() {
     // Reset state
     setPdfDocument(null);
     setTotalPages(0);
-    setDocumentText("");
     setDocumentName("");
     setCurrentPage(1);
     setScale(1.0);

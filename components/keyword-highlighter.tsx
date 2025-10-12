@@ -11,6 +11,11 @@ type KeywordDictionary = {
   [keyword: string]: string;
 };
 
+type KeywordApiItem = {
+  term: string;
+  definition: string;
+};
+
 // Fallback data
 const fallbackKeywords = {
   "green mountain care board":
@@ -41,7 +46,7 @@ export function KeywordHighlighter() {
   const [searchTerm, setSearchTerm] = useState("");
   const [keywords, setKeywords] = useState<KeywordDictionary>(fallbackKeywords);
   const [isLoading, setIsLoading] = useState(true);
-  const [debugInfo, setDebugInfo] = useState<any>({});
+  const [debugInfo] = useState<{ finalTextLength?: number }>({});
 
   // Load document state from sessionStorage
   useEffect(() => {
@@ -117,7 +122,7 @@ export function KeywordHighlighter() {
             const data = await response.json();
 
             const keywordDict: KeywordDictionary = {};
-            data.forEach((item: any) => {
+            data.forEach((item: KeywordApiItem) => {
               keywordDict[item.term.toLowerCase()] = item.definition;
             });
 
@@ -244,7 +249,7 @@ export function KeywordHighlighter() {
               <p className="text-xs text-muted-foreground">
                 Document length: {documentText.length} characters
               </p>
-              {debugInfo.finalTextLength > 0 && (
+              {debugInfo.finalTextLength && debugInfo.finalTextLength > 0 && (
                 <p className="text-xs text-muted-foreground mt-1">
                   Storage text length: {debugInfo.finalTextLength}
                 </p>

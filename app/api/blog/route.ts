@@ -84,7 +84,7 @@ export async function POST(request: Request) {
       data.slug,
       data.content,
       data.excerpt || "",
-      data.author || "Anonymous",
+      data.authorId,
       data.published !== undefined ? Boolean(data.published) : false
     );
 

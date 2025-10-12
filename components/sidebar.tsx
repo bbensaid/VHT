@@ -9,6 +9,7 @@ import {
   Menu,
   MessageSquare,
   Newspaper,
+  type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -73,7 +74,7 @@ function NavItem({
   collapsed,
   active,
 }: {
-  icon: any;
+  icon: LucideIcon;
   label: string;
   href: string;
   collapsed: boolean;

@@ -76,7 +76,7 @@ export class KeywordService {
   static async addKeyword(term: string, definition: string): Promise<Keyword> {
     // Check if keyword exists
     const existingKeyword = await prisma.keyword.findFirst({
-      where: { term: { equals: term, mode: "insensitive" } },
+      where: { term: { equals: term.toLowerCase() } },
     });
 
     if (existingKeyword) {
@@ -131,7 +131,7 @@ export class KeywordService {
       for (const { term, definition } of keywords) {
         // Try to find an existing keyword with the same term
         const existing = await tx.keyword.findFirst({
-          where: { term: { equals: term, mode: "insensitive" } },
+          where: { term: { equals: term.toLowerCase() } },
         });
 
         if (existing) {

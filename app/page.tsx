@@ -9,8 +9,17 @@ import { NewsHeadlines } from "@/components/news-headlines";
 import { NewsArticle } from "@/components/news-article";
 import { ResizableGrid } from "@/components/resizable-grid";
 
+type NewsArticleData = {
+  id: number;
+  title: string;
+  date: string;
+  source: string;
+  summary: string;
+};
+
 export default function Home() {
-  const [selectedArticle, setSelectedArticle] = useState<any>(null);
+  const [selectedArticle, setSelectedArticle] =
+    useState<NewsArticleData | null>(null);
 
   return (
     <div className="flex h-screen bg-background">

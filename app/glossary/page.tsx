@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { PageLayout } from "@/components/page-layout";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -106,7 +106,6 @@ export default function GlossaryPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [selectedLetter, setSelectedLetter] = useState<string | null>(null);
-  const sectionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   // Generate alphabet array
   const alphabet = Array.from({ length: 26 }, (_, i) =>
@@ -182,9 +181,6 @@ export default function GlossaryPage() {
     },
     {}
   );
-
-  // Get available letters (letters that have keywords)
-  const availableLetters = Object.keys(groupedKeywords).sort();
 
   // Scroll to section when letter is clicked
   const scrollToLetter = (letter: string) => {
@@ -271,8 +267,9 @@ export default function GlossaryPage() {
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
                   Found {filteredKeywords.length}{" "}
-                  {filteredKeywords.length === 1 ? "result" : "results"} for "
-                  {searchTerm}"
+                  {filteredKeywords.length === 1 ? "result" : "results"} for
+                  &quot;
+                  {searchTerm}&quot;
                 </p>
                 {filteredKeywords.map((keyword) => (
                   <Card key={keyword.id}>

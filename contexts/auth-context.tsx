@@ -11,6 +11,10 @@ type User = {
   role: string;
 };
 
+type UserWithPassword = User & {
+  password: string;
+};
+
 // Define auth context type
 type AuthContextType = {
   user: User | null;
@@ -23,7 +27,7 @@ type AuthContextType = {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // Mock user data
-const USERS = [
+const USERS: UserWithPassword[] = [
   {
     id: "1",
     name: "Admin User",
@@ -63,7 +67,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 
     if (foundUser) {
-      const { password, ...userWithoutPassword } = foundUser;
+      const userWithoutPassword: User = {
+        id: foundUser.id,
+        name: foundUser.name,
+        email: foundUser.email,
+        role: foundUser.role,
+      };
       setUser(userWithoutPassword);
       localStorage.setItem("auth-user", JSON.stringify(userWithoutPassword));
       return true;
@@ -89,7 +98,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    // During SSR or if provider is not mounted, return a mock context
+    return {
+      user: null,
+      loading: true,
+      login: async () => false,
+      logout: () => {},
+    };
   }
   return context;
 }
