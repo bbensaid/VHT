@@ -6,8 +6,10 @@ import { useState, useEffect, useRef, useCallback } from "react";
 
 export function ResizableGrid({ children }: { children: React.ReactNode[] }) {
   const [gridLayout, setGridLayout] = useState({
-    topRowHeight: 50, // percentage for top row
-    bottomRowHeight: 50, // percentage for bottom row
+    topLeftHeight: 50, // percentage for top-left panel
+    topRightHeight: 50, // percentage for top-right panel
+    bottomLeftHeight: 50, // percentage for bottom-left panel
+    bottomRightHeight: 50, // percentage for bottom-right panel
     topLeftWidth: 50, // percentage for top row
     bottomLeftWidth: 50, // percentage for bottom row
   });
@@ -20,13 +22,74 @@ export function ResizableGrid({ children }: { children: React.ReactNode[] }) {
   });
 
   const [maximizedPanel, setMaximizedPanel] = useState<string | null>(null);
+  const [cursor, setCursor] = useState<string>('default');
+
+  // Handle cursor changes for resize indicators
+  const handleMouseMove = useCallback((e: React.MouseEvent, panel: string) => {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const threshold = 15;
+
+    // Check if mouse is near horizontal resize border (left/right edges)
+    const nearLeftBorder = Math.abs(e.clientX - rect.left) < threshold;
+    const nearRightBorder = Math.abs(e.clientX - rect.right) < threshold;
+
+    // Check if mouse is near vertical resize border (top/bottom edges)
+    const nearTopBorder = Math.abs(e.clientY - rect.top) < threshold;
+    const nearBottomBorder = Math.abs(e.clientY - rect.bottom) < threshold;
+
+    // Determine cursor based on panel position and border proximity
+    if (panel === 'topLeft') {
+      if (nearRightBorder) {
+        setCursor('ew-resize'); // Horizontal resize
+      } else if (nearBottomBorder) {
+        setCursor('ns-resize'); // Vertical resize
+      } else {
+        setCursor('default');
+      }
+    } else if (panel === 'topRight') {
+      if (nearLeftBorder) {
+        setCursor('ew-resize'); // Horizontal resize
+      } else if (nearBottomBorder) {
+        setCursor('ns-resize'); // Vertical resize
+      } else {
+        setCursor('default');
+      }
+    } else if (panel === 'bottomLeft') {
+      if (nearRightBorder) {
+        setCursor('ew-resize'); // Horizontal resize
+      } else if (nearTopBorder) {
+        setCursor('ns-resize'); // Vertical resize
+      } else {
+        setCursor('default');
+      }
+    } else if (panel === 'bottomRight') {
+      if (nearLeftBorder) {
+        setCursor('ew-resize'); // Horizontal resize
+      } else if (nearTopBorder) {
+        setCursor('ns-resize'); // Vertical resize
+      } else {
+        setCursor('default');
+      }
+    }
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    setCursor('default');
+  }, []);
 
   // Calculate effective dimensions based on visibility
-  const topRowHasVisible = panelVisibility.topLeft || panelVisibility.topRight;
-  const bottomRowHasVisible = panelVisibility.bottomLeft || panelVisibility.bottomRight;
+  const leftColumnHasVisible = panelVisibility.topLeft || panelVisibility.bottomLeft;
+  const rightColumnHasVisible = panelVisibility.topRight || panelVisibility.bottomRight;
 
-  const effectiveTopRowHeight = topRowHasVisible && bottomRowHasVisible ? gridLayout.topRowHeight : topRowHasVisible ? 100 : 0;
-  const effectiveBottomRowHeight = topRowHasVisible && bottomRowHasVisible ? gridLayout.bottomRowHeight : bottomRowHasVisible ? 100 : 0;
+  // For panels: if both columns are visible, use individual heights, otherwise full height
+  const effectiveTopLeftHeight = leftColumnHasVisible && rightColumnHasVisible ?
+    gridLayout.topLeftHeight : (panelVisibility.topLeft ? 100 : 0);
+  const effectiveTopRightHeight = leftColumnHasVisible && rightColumnHasVisible ?
+    gridLayout.topRightHeight : (panelVisibility.topRight ? 100 : 0);
+  const effectiveBottomLeftHeight = leftColumnHasVisible && rightColumnHasVisible ?
+    gridLayout.bottomLeftHeight : (panelVisibility.bottomLeft ? 100 : 0);
+  const effectiveBottomRightHeight = leftColumnHasVisible && rightColumnHasVisible ?
+    gridLayout.bottomRightHeight : (panelVisibility.bottomRight ? 100 : 0);
 
   const effectiveTopLeftWidth = panelVisibility.topRight ? gridLayout.topLeftWidth : 100;
   const effectiveTopRightWidth = panelVisibility.topLeft ? 100 - gridLayout.topLeftWidth : 100;
@@ -45,8 +108,10 @@ export function ResizableGrid({ children }: { children: React.ReactNode[] }) {
       });
       setMaximizedPanel(null);
       setGridLayout({
-        topRowHeight: 50,
-        bottomRowHeight: 50,
+        topLeftHeight: 50,
+        topRightHeight: 50,
+        bottomLeftHeight: 50,
+        bottomRightHeight: 50,
         topLeftWidth: 50,
         bottomLeftWidth: 50,
       });
@@ -60,8 +125,10 @@ export function ResizableGrid({ children }: { children: React.ReactNode[] }) {
       });
       setMaximizedPanel(panel);
       setGridLayout({
-        topRowHeight: 100,
-        bottomRowHeight: 0,
+        topLeftHeight: panel === 'topLeft' ? 100 : 0,
+        topRightHeight: panel === 'topRight' ? 100 : 0,
+        bottomLeftHeight: panel === 'bottomLeft' ? 100 : 0,
+        bottomRightHeight: panel === 'bottomRight' ? 100 : 0,
         topLeftWidth: 100,
         bottomLeftWidth: 100,
       });
@@ -119,11 +186,25 @@ export function ResizableGrid({ children }: { children: React.ReactNode[] }) {
     if (newTopHeight >= minHeight && newTopHeight <= maxHeight) {
       setGridLayout((prev) => {
         const clampedHeight = Math.max(minHeight, Math.min(maxHeight, newTopHeight));
-        if (resizingPanel.current === 'left' || resizingPanel.current === 'right') {
+        if (resizingPanel.current === 'left') {
+          // Resizing left column (top-left and bottom-left panels)
+          const totalLeftHeight = prev.topLeftHeight + prev.bottomLeftHeight;
+          const newTopLeftHeight = clampedHeight;
+          const newBottomLeftHeight = Math.max(0, totalLeftHeight - clampedHeight);
           return {
             ...prev,
-            topRowHeight: clampedHeight,
-            bottomRowHeight: 100 - clampedHeight,
+            topLeftHeight: newTopLeftHeight,
+            bottomLeftHeight: newBottomLeftHeight,
+          };
+        } else if (resizingPanel.current === 'right') {
+          // Resizing right column (top-right and bottom-right panels)
+          const totalRightHeight = prev.topRightHeight + prev.bottomRightHeight;
+          const newTopRightHeight = clampedHeight;
+          const newBottomRightHeight = Math.max(0, totalRightHeight - clampedHeight);
+          return {
+            ...prev,
+            topRightHeight: newTopRightHeight,
+            bottomRightHeight: newBottomRightHeight,
           };
         }
         return prev;
@@ -168,8 +249,10 @@ export function ResizableGrid({ children }: { children: React.ReactNode[] }) {
                       panelVisibility.bottomLeft && panelVisibility.bottomRight;
     if (allVisible) {
       setGridLayout({
-        topRowHeight: 50,
-        bottomRowHeight: 50,
+        topLeftHeight: 50,
+        topRightHeight: 50,
+        bottomLeftHeight: 50,
+        bottomRightHeight: 50,
         topLeftWidth: 50,
         bottomLeftWidth: 50,
       });
@@ -238,8 +321,10 @@ export function ResizableGrid({ children }: { children: React.ReactNode[] }) {
         <button
           onClick={() => {
             setGridLayout({
-              topRowHeight: 50,
-              bottomRowHeight: 50,
+              topLeftHeight: 50,
+              topRightHeight: 50,
+              bottomLeftHeight: 50,
+              bottomRightHeight: 50,
               topLeftWidth: 50,
               bottomLeftWidth: 50,
             });
@@ -256,14 +341,17 @@ export function ResizableGrid({ children }: { children: React.ReactNode[] }) {
           Reset Layout
         </button>
       </div>
-      <div ref={containerRef} className="w-full h-full relative">
+      <div ref={containerRef} className="w-full h-full relative" style={{ cursor }}>
         {panelVisibility.topLeft && (
           <div
-            className="absolute top-0 left-0 overflow-hidden rounded-lg border bg-background shadow"
+            className="absolute left-0 overflow-hidden rounded-lg border bg-background shadow"
             style={{
+              top: '0%',
               width: `${effectiveTopLeftWidth}%`,
-              height: `${effectiveTopRowHeight}%`,
+              height: `${effectiveTopLeftHeight}%`,
             }}
+            onMouseMove={(e) => handleMouseMove(e, 'topLeft')}
+            onMouseLeave={handleMouseLeave}
             onMouseDown={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
               const threshold = 15; // Increased threshold for better detection
@@ -300,18 +388,12 @@ export function ResizableGrid({ children }: { children: React.ReactNode[] }) {
               </button>
               <button
                 onClick={() => {
-                  setGridLayout({
-                    topRowHeight: 50,
-                    bottomRowHeight: 50,
-                    topLeftWidth: 50,
-                    bottomLeftWidth: 50,
-                  });
-                  setPanelVisibility({
-                    topLeft: true,
-                    topRight: true,
-                    bottomLeft: true,
-                    bottomRight: true,
-                  });
+                  setGridLayout((prev) => ({
+                    ...prev,
+                    topLeftHeight: 50,
+                    bottomLeftHeight: 50,
+                  }));
+                  setPanelVisibility((prev) => ({ ...prev, topLeft: true }));
                   setMaximizedPanel(null);
                 }}
                 className="bg-background/80 p-1 rounded hover:bg-background text-xs"
@@ -332,11 +414,14 @@ export function ResizableGrid({ children }: { children: React.ReactNode[] }) {
         )}
         {panelVisibility.topRight && (
           <div
-            className="absolute top-0 right-0 overflow-hidden rounded-lg border bg-background shadow"
+            className="absolute right-0 overflow-hidden rounded-lg border bg-background shadow"
             style={{
+              top: '0%',
               width: `${effectiveTopRightWidth}%`,
-              height: `${effectiveTopRowHeight}%`,
+              height: `${effectiveTopRightHeight}%`,
             }}
+            onMouseMove={(e) => handleMouseMove(e, 'topRight')}
+            onMouseLeave={handleMouseLeave}
             onMouseDown={(e) => {
               document.body.style.userSelect = 'none'; // Prevent text selection immediately
               const rect = e.currentTarget.getBoundingClientRect();
@@ -374,18 +459,12 @@ export function ResizableGrid({ children }: { children: React.ReactNode[] }) {
               </button>
               <button
                 onClick={() => {
-                  setGridLayout({
-                    topRowHeight: 50,
-                    bottomRowHeight: 50,
-                    topLeftWidth: 50,
-                    bottomLeftWidth: 50,
-                  });
-                  setPanelVisibility({
-                    topLeft: true,
-                    topRight: true,
-                    bottomLeft: true,
-                    bottomRight: true,
-                  });
+                  setGridLayout((prev) => ({
+                    ...prev,
+                    topRightHeight: 50,
+                    bottomRightHeight: 50,
+                  }));
+                  setPanelVisibility((prev) => ({ ...prev, topRight: true }));
                   setMaximizedPanel(null);
                 }}
                 className="bg-background/80 p-1 rounded hover:bg-background text-xs"
@@ -406,11 +485,14 @@ export function ResizableGrid({ children }: { children: React.ReactNode[] }) {
         )}
         {panelVisibility.bottomLeft && (
           <div
-            className="absolute bottom-0 left-0 overflow-hidden rounded-lg border bg-background shadow"
+            className="absolute left-0 overflow-hidden rounded-lg border bg-background shadow"
             style={{
+              top: `${effectiveTopLeftHeight}%`,
               width: `${effectiveBottomLeftWidth}%`,
-              height: `${effectiveBottomRowHeight}%`,
+              height: `${effectiveBottomLeftHeight}%`,
             }}
+            onMouseMove={(e) => handleMouseMove(e, 'bottomLeft')}
+            onMouseLeave={handleMouseLeave}
             onMouseDown={(e) => {
               document.body.style.userSelect = 'none'; // Prevent text selection immediately
               const rect = e.currentTarget.getBoundingClientRect();
@@ -448,18 +530,12 @@ export function ResizableGrid({ children }: { children: React.ReactNode[] }) {
               </button>
               <button
                 onClick={() => {
-                  setGridLayout({
-                    topRowHeight: 50,
-                    bottomRowHeight: 50,
-                    topLeftWidth: 50,
-                    bottomLeftWidth: 50,
-                  });
-                  setPanelVisibility({
-                    topLeft: true,
-                    topRight: true,
-                    bottomLeft: true,
-                    bottomRight: true,
-                  });
+                  setGridLayout((prev) => ({
+                    ...prev,
+                    topLeftHeight: 50,
+                    bottomLeftHeight: 50,
+                  }));
+                  setPanelVisibility((prev) => ({ ...prev, bottomLeft: true }));
                   setMaximizedPanel(null);
                 }}
                 className="bg-background/80 p-1 rounded hover:bg-background text-xs"
@@ -480,11 +556,14 @@ export function ResizableGrid({ children }: { children: React.ReactNode[] }) {
         )}
         {panelVisibility.bottomRight && (
           <div
-            className="absolute bottom-0 right-0 overflow-hidden rounded-lg border bg-background shadow"
+            className="absolute right-0 overflow-hidden rounded-lg border bg-background shadow"
             style={{
+              top: `${effectiveTopRightHeight}%`,
               width: `${effectiveBottomRightWidth}%`,
-              height: `${effectiveBottomRowHeight}%`,
+              height: `${effectiveBottomRightHeight}%`,
             }}
+            onMouseMove={(e) => handleMouseMove(e, 'bottomRight')}
+            onMouseLeave={handleMouseLeave}
             onMouseDown={(e) => {
               document.body.style.userSelect = 'none'; // Prevent text selection immediately
               const rect = e.currentTarget.getBoundingClientRect();
@@ -522,18 +601,12 @@ export function ResizableGrid({ children }: { children: React.ReactNode[] }) {
               </button>
               <button
                 onClick={() => {
-                  setGridLayout({
-                    topRowHeight: 50,
-                    bottomRowHeight: 50,
-                    topLeftWidth: 50,
-                    bottomLeftWidth: 50,
-                  });
-                  setPanelVisibility({
-                    topLeft: true,
-                    topRight: true,
-                    bottomLeft: true,
-                    bottomRight: true,
-                  });
+                  setGridLayout((prev) => ({
+                    ...prev,
+                    topRightHeight: 50,
+                    bottomRightHeight: 50,
+                  }));
+                  setPanelVisibility((prev) => ({ ...prev, bottomRight: true }));
                   setMaximizedPanel(null);
                 }}
                 className="bg-background/80 p-1 rounded hover:bg-background text-xs"
