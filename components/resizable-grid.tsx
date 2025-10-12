@@ -81,15 +81,43 @@ export function ResizableGrid({ children }: { children: React.ReactNode[] }) {
   const leftColumnHasVisible = panelVisibility.topLeft || panelVisibility.bottomLeft;
   const rightColumnHasVisible = panelVisibility.topRight || panelVisibility.bottomRight;
 
-  // For panels: if both columns are visible, use individual heights, otherwise full height
-  const effectiveTopLeftHeight = leftColumnHasVisible && rightColumnHasVisible ?
-    gridLayout.topLeftHeight : (panelVisibility.topLeft ? 100 : 0);
-  const effectiveTopRightHeight = leftColumnHasVisible && rightColumnHasVisible ?
-    gridLayout.topRightHeight : (panelVisibility.topRight ? 100 : 0);
-  const effectiveBottomLeftHeight = leftColumnHasVisible && rightColumnHasVisible ?
-    gridLayout.bottomLeftHeight : (panelVisibility.bottomLeft ? 100 : 0);
-  const effectiveBottomRightHeight = leftColumnHasVisible && rightColumnHasVisible ?
-    gridLayout.bottomRightHeight : (panelVisibility.bottomRight ? 100 : 0);
+  // Calculate how many panels are visible in each column
+  const leftColumnVisibleCount = (panelVisibility.topLeft ? 1 : 0) + (panelVisibility.bottomLeft ? 1 : 0);
+  const rightColumnVisibleCount = (panelVisibility.topRight ? 1 : 0) + (panelVisibility.bottomRight ? 1 : 0);
+
+  // Calculate effective heights based on column visibility
+  let effectiveTopLeftHeight: number;
+  let effectiveTopRightHeight: number;
+  let effectiveBottomLeftHeight: number;
+  let effectiveBottomRightHeight: number;
+
+  if (leftColumnHasVisible && rightColumnHasVisible) {
+    // Both columns visible - use stored heights
+    effectiveTopLeftHeight = gridLayout.topLeftHeight;
+    effectiveTopRightHeight = gridLayout.topRightHeight;
+    effectiveBottomLeftHeight = gridLayout.bottomLeftHeight;
+    effectiveBottomRightHeight = gridLayout.bottomRightHeight;
+  } else if (leftColumnHasVisible) {
+    // Only left column visible - distribute height among left panels
+    const heightPerPanel = 100 / leftColumnVisibleCount;
+    effectiveTopLeftHeight = panelVisibility.topLeft ? heightPerPanel : 0;
+    effectiveBottomLeftHeight = panelVisibility.bottomLeft ? heightPerPanel : 0;
+    effectiveTopRightHeight = 0;
+    effectiveBottomRightHeight = 0;
+  } else if (rightColumnHasVisible) {
+    // Only right column visible - distribute height among right panels
+    const heightPerPanel = 100 / rightColumnVisibleCount;
+    effectiveTopLeftHeight = 0;
+    effectiveBottomLeftHeight = 0;
+    effectiveTopRightHeight = panelVisibility.topRight ? heightPerPanel : 0;
+    effectiveBottomRightHeight = panelVisibility.bottomRight ? heightPerPanel : 0;
+  } else {
+    // No panels visible
+    effectiveTopLeftHeight = 0;
+    effectiveTopRightHeight = 0;
+    effectiveBottomLeftHeight = 0;
+    effectiveBottomRightHeight = 0;
+  }
 
   const effectiveTopLeftWidth = panelVisibility.topRight ? gridLayout.topLeftWidth : 100;
   const effectiveTopRightWidth = panelVisibility.topLeft ? 100 - gridLayout.topLeftWidth : 100;
