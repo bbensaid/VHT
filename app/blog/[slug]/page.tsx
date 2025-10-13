@@ -13,7 +13,18 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Calendar, User, Edit, ArrowLeft, Share2 } from "lucide-react";
+import {
+  Calendar,
+  User,
+  Edit,
+  ArrowLeft,
+  Share2,
+  Copy,
+  Mail,
+  Twitter,
+  Facebook,
+  Linkedin,
+} from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import {
   AlertDialog,
@@ -105,31 +116,67 @@ export default function BlogPostPage() {
     });
   };
 
-  // Share post
-  const sharePost = async () => {
-    if (!post) return;
-
+  // Share functions
+  const copyLink = async () => {
     const url = window.location.href;
-    const title = post.title;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title,
-          text: post.excerpt,
-          url,
-        });
-      } catch (error) {
-        console.error("Error sharing:", error);
-      }
-    } else {
-      // Fallback to copying to clipboard
-      navigator.clipboard.writeText(url);
+    try {
+      await navigator.clipboard.writeText(url);
       toast({
-        title: "Link copied to clipboard",
-        description: "You can now share this blog post with others.",
+        title: "Link copied!",
+        description: "The blog post link has been copied to your clipboard.",
+      });
+    } catch (error) {
+      console.error("Error copying link:", error);
+      toast({
+        title: "Copy failed",
+        description: "Unable to copy link. Please copy the URL manually.",
+        variant: "destructive",
       });
     }
+  };
+
+  const shareViaEmail = () => {
+    const url = encodeURIComponent(window.location.href);
+    const subject = encodeURIComponent(
+      `Check out this blog post: ${post?.title}`
+    );
+    const body = encodeURIComponent(
+      `I thought you might find this interesting:\n\n${post?.title}\n\n${post?.excerpt}\n\nRead more: ${window.location.href}`
+    );
+    window.open(`mailto:?subject=${subject}&body=${body}`);
+  };
+
+  const shareViaGmail = () => {
+    const url = encodeURIComponent(window.location.href);
+    const subject = encodeURIComponent(
+      `Check out this blog post: ${post?.title}`
+    );
+    const body = encodeURIComponent(
+      `I thought you might find this interesting:\n\n${post?.title}\n\n${post?.excerpt}\n\nRead more: ${window.location.href}`
+    );
+    window.open(
+      `https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`
+    );
+  };
+
+  const shareViaTwitter = () => {
+    const url = encodeURIComponent(window.location.href);
+    const text = encodeURIComponent(`Check out this blog post: ${post?.title}`);
+    window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`);
+  };
+
+  const shareViaFacebook = () => {
+    const url = encodeURIComponent(window.location.href);
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`);
+  };
+
+  const shareViaLinkedIn = () => {
+    const url = encodeURIComponent(window.location.href);
+    const title = encodeURIComponent(post?.title || "");
+    const summary = encodeURIComponent(post?.excerpt || "");
+    window.open(
+      `https://www.linkedin.com/sharing/share-offsite/?url=${url}&title=${title}&summary=${summary}`
+    );
   };
 
   // Delete post
@@ -220,7 +267,9 @@ export default function BlogPostPage() {
         <Card className="max-w-md mx-auto">
           <CardHeader>
             <CardTitle>Error</CardTitle>
-            <CardDescription>We couldn&apos;t load this blog post</CardDescription>
+            <CardDescription>
+              We couldn&apos;t load this blog post
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <p>{error}</p>
@@ -254,10 +303,40 @@ export default function BlogPostPage() {
                 Back to Blog
               </Button>
 
-              <Button variant="outline" onClick={sharePost}>
-                <Share2 className="mr-2 h-4 w-4" />
-                Share
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <Share2 className="mr-2 h-4 w-4" />
+                    Share
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={copyLink}>
+                    <Copy className="mr-2 h-4 w-4" />
+                    Copy Link
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={shareViaEmail}>
+                    <Mail className="mr-2 h-4 w-4" />
+                    Email
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={shareViaGmail}>
+                    <Mail className="mr-2 h-4 w-4" />
+                    Gmail
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={shareViaTwitter}>
+                    <Twitter className="mr-2 h-4 w-4" />
+                    Twitter
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={shareViaFacebook}>
+                    <Facebook className="mr-2 h-4 w-4" />
+                    Facebook
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={shareViaLinkedIn}>
+                    <Linkedin className="mr-2 h-4 w-4" />
+                    LinkedIn
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
