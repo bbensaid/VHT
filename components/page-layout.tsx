@@ -112,16 +112,16 @@ export function PageLayout({
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
-                      variant="ghost"
-                      size="icon"
+                      variant="outline"
                       onClick={() => router.back()}
                       className="hover:bg-accent"
                     >
-                      <ChevronLeft className="h-5 w-5" />
+                      <ChevronLeft className="mr-2 h-4 w-4" />
+                      Back
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Back</p>
+                    <p>Go back to previous page</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

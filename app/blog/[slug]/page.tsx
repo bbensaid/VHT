@@ -253,7 +253,7 @@ export default function BlogPostPage() {
   };
 
   return (
-    <PageLayout title="Blog Post">
+    <PageLayout title="Blog Post" showBackButton={false}>
       {isLoading ? (
         <div className="max-w-4xl mx-auto">
           <Skeleton className="h-12 w-3/4 mb-4" />

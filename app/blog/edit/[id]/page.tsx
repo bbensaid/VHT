@@ -242,7 +242,7 @@ export default function EditBlogPostPage() {
 
   if (isLoading) {
     return (
-      <PageLayout title="Edit Blog Post">
+      <PageLayout title="Edit Blog Post" showBackButton={false}>
         <div className="max-w-5xl mx-auto">
           <Card>
             <CardHeader>
@@ -255,7 +255,7 @@ export default function EditBlogPostPage() {
   }
 
   return (
-    <PageLayout title="Edit Blog Post">
+    <PageLayout title="Edit Blog Post" showBackButton={false}>
       <form onSubmit={handleSubmit} className="max-w-5xl mx-auto">
         <Card>
           <CardHeader>

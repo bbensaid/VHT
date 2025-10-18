@@ -81,7 +81,7 @@ export default function BlogAdminPage() {
 
   if (isLoading) {
     return (
-      <PageLayout>
+      <PageLayout title="Blog Admin">
         <div className="container mx-auto py-8">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-3xl font-bold">Blog Management</h1>
@@ -107,7 +107,7 @@ export default function BlogAdminPage() {
   }
 
   return (
-    <PageLayout>
+    <PageLayout title="Blog Admin">
       <div className="container mx-auto py-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold">Blog Management</h1>
