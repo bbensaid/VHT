@@ -145,28 +145,28 @@ export default function NewBlogPostPage() {
   const processPDFFile = async (file: File): Promise<string> => {
     const arrayBuffer = await file.arrayBuffer();
     // Import pdfjs dynamically to avoid SSR issues
-    const pdfjsLib = await import('pdfjs-dist');
+    const pdfjsLib = await import("pdfjs-dist");
 
     // Set worker source
     pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-    let fullText = '';
+    let fullText = "";
 
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
       const pageText = textContent.items
-        .map((item) => ('str' in item ? item.str : ''))
-        .join(' ');
-      fullText += pageText + '\n\n';
+        .map((item) => ("str" in item ? item.str : ""))
+        .join(" ");
+      fullText += pageText + "\n\n";
     }
 
     return fullText.trim();
   };
 
   const processDOCXFile = async (file: File): Promise<string> => {
-    const mammoth = await import('mammoth');
+    const mammoth = await import("mammoth");
     const arrayBuffer = await file.arrayBuffer();
     const result = await mammoth.extractRawText({ arrayBuffer });
     return result.value;
@@ -176,67 +176,82 @@ export default function NewBlogPostPage() {
     return await file.text();
   };
 
-  const processUploadedFile = useCallback(async (file: File) => {
-    setIsProcessingFile(true);
-    try {
-      let extractedContent = '';
+  const processUploadedFile = useCallback(
+    async (file: File) => {
+      setIsProcessingFile(true);
+      try {
+        let extractedContent = "";
 
-      if (file.type === 'application/pdf') {
-        extractedContent = await processPDFFile(file);
-      } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        extractedContent = await processDOCXFile(file);
-      } else if (file.name.endsWith('.mdx') || file.name.endsWith('.md')) {
-        extractedContent = await processMDXFile(file);
-      } else {
-        throw new Error('Unsupported file type. Please upload PDF, DOCX, or MDX files.');
+        if (file.type === "application/pdf") {
+          extractedContent = await processPDFFile(file);
+        } else if (
+          file.type ===
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        ) {
+          extractedContent = await processDOCXFile(file);
+        } else if (file.name.endsWith(".mdx") || file.name.endsWith(".md")) {
+          extractedContent = await processMDXFile(file);
+        } else {
+          throw new Error(
+            "Unsupported file type. Please upload PDF, DOCX, or MDX files."
+          );
+        }
+
+        setFileContent(extractedContent);
+        setContent(extractedContent);
+
+        // Try to extract title from first line if it's a heading
+        if (!title && extractedContent.trim().startsWith("# ")) {
+          const firstLine = extractedContent.trim().split("\n")[0];
+          const extractedTitle = firstLine.substring(2).trim();
+          setTitle(extractedTitle);
+        }
+
+        // Generate excerpt from content if not provided
+        if (!excerpt && extractedContent.length > 100) {
+          setExcerpt(extractedContent.substring(0, 150) + "...");
+        }
+
+        toast({
+          title: "File processed successfully",
+          description: `Content extracted from ${file.name}`,
+        });
+      } catch (error) {
+        console.error("Error processing file:", error);
+        toast({
+          title: "File processing failed",
+          description:
+            error instanceof Error
+              ? error.message
+              : "Failed to process the uploaded file",
+          variant: "destructive",
+        });
+      } finally {
+        setIsProcessingFile(false);
       }
-
-      setFileContent(extractedContent);
-      setContent(extractedContent);
-
-      // Try to extract title from first line if it's a heading
-      if (!title && extractedContent.trim().startsWith('# ')) {
-        const firstLine = extractedContent.trim().split('\n')[0];
-        const extractedTitle = firstLine.substring(2).trim();
-        setTitle(extractedTitle);
-      }
-
-      // Generate excerpt from content if not provided
-      if (!excerpt && extractedContent.length > 100) {
-        setExcerpt(extractedContent.substring(0, 150) + '...');
-      }
-
-      toast({
-        title: "File processed successfully",
-        description: `Content extracted from ${file.name}`,
-      });
-    } catch (error) {
-      console.error('Error processing file:', error);
-      toast({
-        title: "File processing failed",
-        description: error instanceof Error ? error.message : "Failed to process the uploaded file",
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessingFile(false);
-    }
-  }, [title, excerpt, toast]);
+    },
+    [title, excerpt, toast]
+  );
 
   // Dropzone configuration
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const file = acceptedFiles[0];
-    if (file) {
-      setUploadedFile(file);
-      processUploadedFile(file);
-    }
-  }, [processUploadedFile]);
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      const file = acceptedFiles[0];
+      if (file) {
+        setUploadedFile(file);
+        processUploadedFile(file);
+      }
+    },
+    [processUploadedFile]
+  );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'application/pdf': ['.pdf'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      'text/markdown': ['.md', '.mdx'],
+      "application/pdf": [".pdf"],
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+        [".docx"],
+      "text/markdown": [".md", ".mdx"],
     },
     multiple: false,
     maxSize: 10 * 1024 * 1024, // 10MB
@@ -244,9 +259,9 @@ export default function NewBlogPostPage() {
 
   const removeFile = () => {
     setUploadedFile(null);
-    setFileContent('');
+    setFileContent("");
     if (!content || content === fileContent) {
-      setContent('');
+      setContent("");
     }
   };
 
@@ -416,23 +431,30 @@ export default function NewBlogPostPage() {
                       {...getRootProps()}
                       className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
                         isDragActive
-                          ? 'border-primary bg-primary/5'
-                          : 'border-muted-foreground/25 hover:border-muted-foreground/50'
+                          ? "border-primary bg-primary/5"
+                          : "border-muted-foreground/25 hover:border-muted-foreground/50"
                       }`}
                     >
                       <input {...getInputProps()} />
                       <Upload className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                       {isProcessingFile ? (
                         <div>
-                          <p className="text-sm font-medium">Processing file...</p>
-                          <p className="text-xs text-muted-foreground">Please wait while we extract the content</p>
+                          <p className="text-sm font-medium">
+                            Processing file...
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Please wait while we extract the content
+                          </p>
                         </div>
                       ) : uploadedFile ? (
                         <div>
                           <FileText className="mx-auto h-8 w-8 text-green-600 mb-2" />
-                          <p className="text-sm font-medium">{uploadedFile.name}</p>
+                          <p className="text-sm font-medium">
+                            {uploadedFile.name}
+                          </p>
                           <p className="text-xs text-muted-foreground">
-                            {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB • Content extracted
+                            {(uploadedFile.size / 1024 / 1024).toFixed(2)} MB •
+                            Content extracted
                           </p>
                           <Button
                             type="button"
@@ -451,7 +473,9 @@ export default function NewBlogPostPage() {
                       ) : (
                         <div>
                           <p className="text-sm font-medium">
-                            {isDragActive ? 'Drop your file here' : 'Drag & drop a file here, or click to select'}
+                            {isDragActive
+                              ? "Drop your file here"
+                              : "Drag & drop a file here, or click to select"}
                           </p>
                           <p className="text-xs text-muted-foreground mt-1">
                             Supports PDF, DOCX, and MDX files (max 10MB)
@@ -461,7 +485,9 @@ export default function NewBlogPostPage() {
                     </div>
                     {uploadedFile && (
                       <div className="space-y-2">
-                        <Label htmlFor="extracted-content">Extracted Content (Editable)</Label>
+                        <Label htmlFor="extracted-content">
+                          Extracted Content (Editable)
+                        </Label>
                         <Textarea
                           id="extracted-content"
                           value={content}

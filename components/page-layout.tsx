@@ -131,18 +131,18 @@ export function PageLayout({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    variant="ghost"
-                    size="icon"
+                    variant="outline"
                     asChild
                     className="hover:bg-accent"
                   >
                     <Link href="/">
-                      <Home className="h-5 w-5" />
+                      <Home className="mr-2 h-4 w-4" />
+                      Home
                     </Link>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Home</p>
+                  <p>Go to home page</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
