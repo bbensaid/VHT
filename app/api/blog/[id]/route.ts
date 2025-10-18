@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { BlogService } from "@/services/blog-service";
-import prisma from "@/lib/prisma";
+import prisma from "@/lib/database/prisma";
 
 export async function GET(
   request: Request,

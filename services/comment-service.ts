@@ -1,4 +1,4 @@
-import prisma from "@/lib/prisma";
+import prisma from "@/lib/database/prisma";
 import type { Comment } from "@prisma/client";
 
 // Initial sample comments

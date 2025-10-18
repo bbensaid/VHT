@@ -18,7 +18,7 @@ import Link from "next/link";
 import { useToast } from "@/components/ui/use-toast";
 import { DebugStorage } from "@/components/debug-storage";
 import dynamic from "next/dynamic";
-import { storeDocumentText } from "@/utils/document-state";
+import { storeDocumentText } from "@/lib/storage/document-state";
 
 // Define a global type for the PDF.js library
 declare global {

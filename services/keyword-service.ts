@@ -1,4 +1,4 @@
-import prisma from "@/lib/prisma";
+import prisma from "@/lib/database/prisma";
 import type { Keyword } from "@prisma/client";
 
 // Initial sample keywords

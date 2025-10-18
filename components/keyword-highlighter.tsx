@@ -5,7 +5,7 @@ import { useState, useEffect } from "react";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
-import { getDocumentText } from "@/utils/document-state";
+import { getDocumentText } from "@/lib/storage/document-state";
 
 type KeywordDictionary = {
   [keyword: string]: string;

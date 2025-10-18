@@ -31,7 +31,8 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Plus, Calendar, User } from "lucide-react";
+import { Search, Plus, Calendar, User, Settings } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 type BlogPost = {
   id: string;
@@ -88,6 +89,7 @@ const fallbackPosts: BlogPost[] = [
 
 export default function BlogPage() {
   const router = useRouter();
+  const { data: session } = useSession();
   const [posts, setPosts] = useState<BlogPost[]>([]);
   const [filteredPosts, setFilteredPosts] = useState<BlogPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -239,6 +241,15 @@ export default function BlogPage() {
                 <SelectItem value="sarah">Sarah Johnson</SelectItem>
               </SelectContent>
             </Select>
+
+            {session && (
+              <Button variant="outline" asChild className="whitespace-nowrap">
+                <Link href="/blog/admin">
+                  <Settings className="mr-2 h-4 w-4" />
+                  Manage Posts
+                </Link>
+              </Button>
+            )}
 
             <Button
               onClick={() => router.push("/blog/new")}
