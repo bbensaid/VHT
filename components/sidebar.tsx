@@ -38,22 +38,39 @@ export function Sidebar() {
         collapsed ? "w-12" : "w-64"
       )}
     >
-      <div className="flex h-16 items-center justify-between px-3 border-b">
+      <div className="relative h-16 border-b">
         {!collapsed && (
-          <div className="flex flex-col">
-            <h2 className="text-sm font-bold leading-tight whitespace-nowrap">Health Transformation Review</h2>
-            <p className="text-xs text-muted-foreground mt-1">Where Policy Meets Innovation</p>
+          <div className="flex items-center h-full px-4">
+            <div className="flex flex-col flex-1">
+              <h2 className="text-sm font-bold leading-tight whitespace-nowrap">Health Transformation Review</h2>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">Where Policy Meets Innovation</p>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setCollapsed(!collapsed)}
+                  aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+                  className="h-6 w-6 ml-2"
+                >
+                  <Menu className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
           </div>
         )}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setCollapsed(!collapsed)}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          className="h-6 w-6"
-        >
-          <Menu className="h-4 w-4" />
-        </Button>
+        {collapsed && (
+          <div className="flex justify-center items-center h-full">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setCollapsed(!collapsed)}
+              aria-label="Expand sidebar"
+              className="h-6 w-6"
+            >
+              <Menu className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </div>
       <nav className="space-y-1 p-2">
         {navItems.map((item) => (
