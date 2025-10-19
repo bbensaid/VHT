@@ -40,11 +40,11 @@ export function Sidebar() {
     >
       <div className="relative h-16 border-b bg-background">
         {!collapsed && (
-          <div className="h-full flex flex-col">
-            <h2 className="text-lg font-extrabold bg-black text-white leading-tight whitespace-nowrap px-2 py-1">
+          <div className="h-full flex flex-col items-center justify-center">
+            <h2 className="text-lg font-extrabold bg-black text-white leading-tight whitespace-nowrap px-2 py-1 w-full text-center">
               Health Transformation Review
             </h2>
-            <p className="text-sm bg-gray-200 text-black text-center flex-1 flex items-center justify-center">
+            <p className="text-sm bg-gray-200 text-black text-center py-1 px-2 w-full">
               Where Policy Meets Innovation
             </p>
           </div>
