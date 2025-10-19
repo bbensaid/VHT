@@ -28,8 +28,8 @@ export function PageLayout({
     <div className="min-h-screen flex bg-background">
       <Sidebar />
       <div className="flex-1 flex flex-col">
-        <header className="border-b bg-card">
-          <div className="px-4 py-3 flex items-center justify-between">
+        <header className="h-16 border-b bg-card flex items-center">
+          <div className="px-4 flex items-center justify-between w-full">
             <div className="flex items-center space-x-4">
               {showBackButton && (
                 <Button variant="outline" onClick={() => router.back()}>
