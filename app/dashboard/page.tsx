@@ -1,7 +1,6 @@
 "use client";
 
-import { Sidebar } from "@/components/sidebar";
-import { Navbar } from "@/components/navbar";
+import { PageLayout } from "@/components/page-layout";
 import {
   Card,
   CardContent,
@@ -21,15 +20,11 @@ import {
 
 export default function DashboardPage() {
   return (
-    <div className="flex h-screen bg-background">
-      <Sidebar />
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <Navbar />
-        <main className="flex-1 overflow-auto p-4">
-          <div className="container mx-auto">
-            <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+    <PageLayout title="Dashboard">
+      <div className="container mx-auto">
+        <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               <DashboardCard
                 title="Documents"
                 value="24"
@@ -180,9 +175,7 @@ export default function DashboardPage() {
               </Card>
             </div>
           </div>
-        </main>
-      </div>
-    </div>
+    </PageLayout>
   );
 }
 

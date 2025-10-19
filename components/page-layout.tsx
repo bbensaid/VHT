@@ -15,6 +15,7 @@ import {
   Settings,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Sidebar } from "@/components/sidebar";
 import {
   Sheet,
   SheetContent,
@@ -102,51 +103,56 @@ export function PageLayout({
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Header with navigation */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            {showBackButton && (
+    <div className="min-h-screen flex bg-background">
+      {/* Sidebar */}
+      <Sidebar />
+      
+      {/* Main content */}
+      <div className="flex-1 flex flex-col">
+        {/* Header with navigation */}
+        <header className="border-b bg-card">
+          <div className="px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              {showBackButton && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        onClick={() => router.back()}
+                        className="hover:bg-accent"
+                      >
+                        <ChevronLeft className="mr-2 h-4 w-4" />
+                        Back
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Go back to previous page</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      onClick={() => router.back()}
-                      className="hover:bg-accent"
-                    >
-                      <ChevronLeft className="mr-2 h-4 w-4" />
-                      Back
+                    <Button variant="outline" asChild className="hover:bg-accent">
+                      <Link href="/">
+                        <Home className="mr-2 h-4 w-4" />
+                        Home
+                      </Link>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Go back to previous page</p>
+                    <p>Go to home page</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-            )}
 
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" asChild className="hover:bg-accent">
-                    <Link href="/">
-                      <Home className="mr-2 h-4 w-4" />
-                      Home
-                    </Link>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>Go to home page</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+              <h1 className="text-xl font-semibold">{title}</h1>
+            </div>
 
-            <h1 className="text-xl font-semibold">{title}</h1>
-          </div>
-
-          <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2">
             {showHelpButton && (
               <Sheet open={helpOpen} onOpenChange={setHelpOpen}>
                 <SheetTrigger asChild>
@@ -209,18 +215,18 @@ export function PageLayout({
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Main content */}
-      <main className="flex-1 container mx-auto px-4 py-6">{children}</main>
+        {/* Main content */}
+        <main className="flex-1 px-4 py-6">{children}</main>
 
-      {/* Footer */}
-      <footer className="border-t py-4 bg-muted/30">
-        <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} Vermont Healthcare Reform Portal</p>
-        </div>
-      </footer>
+        {/* Footer */}
+        <footer className="border-t py-4 bg-muted/30">
+          <div className="px-4 text-center text-sm text-muted-foreground">
+            <p>© {new Date().getFullYear()} Health Transformation Review</p>
+          </div>
+        </footer>
+      </div>
     </div>
   );
 }

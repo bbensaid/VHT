@@ -35,20 +35,25 @@ export function Sidebar() {
     <div
       className={cn(
         "h-screen border-r bg-background transition-all duration-300",
-        collapsed ? "w-16" : "w-64"
+        collapsed ? "w-12" : "w-48"
       )}
     >
-      <div className="flex h-16 items-center justify-between px-4 border-b">
+      <div className="flex h-20 items-center justify-between px-3 border-b">
         {!collapsed && (
-          <h2 className="text-lg font-semibold">VT Health Reform</h2>
+          <div className="flex flex-col">
+            <h2 className="text-sm font-bold leading-tight">Health Transformation</h2>
+            <h2 className="text-sm font-bold leading-tight">Review</h2>
+            <p className="text-xs text-muted-foreground mt-1">Where Policy Meets Innovation</p>
+          </div>
         )}
         <Button
           variant="ghost"
           size="icon"
           onClick={() => setCollapsed(!collapsed)}
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          className="h-6 w-6"
         >
-          <Menu className="h-5 w-5" />
+          <Menu className="h-4 w-4" />
         </Button>
       </div>
       <nav className="space-y-1 p-2">

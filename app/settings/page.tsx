@@ -1,7 +1,6 @@
 "use client";
 
-import { Sidebar } from "@/components/sidebar";
-import { Navbar } from "@/components/navbar";
+import { PageLayout } from "@/components/page-layout";
 import {
   Card,
   CardContent,
@@ -19,15 +18,11 @@ import { Separator } from "@/components/ui/separator";
 
 export default function SettingsPage() {
   return (
-    <div className="flex h-screen bg-background">
-      <Sidebar />
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <Navbar />
-        <main className="flex-1 overflow-auto p-4">
-          <div className="container mx-auto max-w-4xl">
-            <h1 className="text-2xl font-bold mb-6">Settings</h1>
+    <PageLayout title="Settings">
+      <div className="container mx-auto max-w-4xl">
+        <h1 className="text-2xl font-bold mb-6">Settings</h1>
 
-            <Tabs defaultValue="general">
+        <Tabs defaultValue="general">
               <TabsList className="mb-6">
                 <TabsTrigger value="general">General</TabsTrigger>
                 <TabsTrigger value="appearance">Appearance</TabsTrigger>
@@ -177,8 +172,6 @@ export default function SettingsPage() {
               </TabsContent>
             </Tabs>
           </div>
-        </main>
-      </div>
-    </div>
+    </PageLayout>
   );
 }

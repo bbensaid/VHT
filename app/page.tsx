@@ -1,8 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Sidebar } from "@/components/sidebar";
-import { Navbar } from "@/components/navbar";
+import { PageLayout } from "@/components/page-layout";
 import { DocumentViewer } from "@/components/document-viewer";
 import { KeywordHighlighter } from "@/components/keyword-highlighter";
 import { NewsHeadlines } from "@/components/news-headlines";
@@ -22,19 +21,15 @@ export default function Home() {
     useState<NewsArticleData | null>(null);
 
   return (
-    <div className="flex h-screen bg-background">
-      <Sidebar />
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <Navbar />
-        <main className="flex-1 overflow-hidden p-4">
-          <ResizableGrid>
-            <DocumentViewer />
-            <KeywordHighlighter />
-            <NewsHeadlines onArticleSelected={setSelectedArticle} />
-            <NewsArticle article={selectedArticle} />
-          </ResizableGrid>
-        </main>
+    <PageLayout title="Documents">
+      <div className="h-full overflow-hidden">
+        <ResizableGrid>
+          <DocumentViewer />
+          <KeywordHighlighter />
+          <NewsHeadlines onArticleSelected={setSelectedArticle} />
+          <NewsArticle article={selectedArticle} />
+        </ResizableGrid>
       </div>
-    </div>
+    </PageLayout>
   );
 }
