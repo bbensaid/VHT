@@ -130,11 +130,7 @@ export function PageLayout({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    asChild
-                    className="hover:bg-accent"
-                  >
+                  <Button variant="outline" asChild className="hover:bg-accent">
                     <Link href="/">
                       <Home className="mr-2 h-4 w-4" />
                       Home
