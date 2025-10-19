@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { DocumentProvider } from "@/contexts/document-context";
 import { AuthProvider } from "@/components/auth-provider";
+import { SidebarProvider } from "@/contexts/sidebar-context";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -30,8 +31,10 @@ export default function RootLayout({
         >
           <AuthProvider>
             <DocumentProvider>
-              {children}
-              <Toaster />
+              <SidebarProvider>
+                {children}
+                <Toaster />
+              </SidebarProvider>
             </DocumentProvider>
           </AuthProvider>
         </ThemeProvider>

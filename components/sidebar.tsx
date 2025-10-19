@@ -13,12 +13,12 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/ui/utils";
-import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSidebar } from "@/contexts/sidebar-context";
 
 export function Sidebar() {
-  const [collapsed, setCollapsed] = useState(false);
+  const { collapsed, toggleCollapsed } = useSidebar();
   const pathname = usePathname();
 
   const navItems = [
@@ -38,7 +38,7 @@ export function Sidebar() {
         collapsed ? "w-12" : "w-72"
       )}
     >
-      <div className="relative h-16 border-b">
+      <div className="relative h-16 border-b bg-background">
         {!collapsed && (
           <div className="h-full flex flex-col">
             <h2 className="text-lg font-extrabold bg-black text-white leading-tight whitespace-nowrap px-2 py-1">
@@ -54,7 +54,7 @@ export function Sidebar() {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setCollapsed(!collapsed)}
+              onClick={() => toggleCollapsed()}
               aria-label="Expand sidebar"
               className="h-6 w-6"
             >
@@ -68,7 +68,7 @@ export function Sidebar() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setCollapsed(!collapsed)}
+            onClick={() => toggleCollapsed()}
             aria-label="Collapse sidebar"
             className="h-6 w-6"
           >

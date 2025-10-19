@@ -4,12 +4,10 @@ import type React from "react";
 
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import {
-  Home,
-  ChevronLeft,
-} from "lucide-react";
+import { Home, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sidebar } from "@/components/sidebar";
+import { useSidebar } from "@/contexts/sidebar-context";
 
 interface PageLayoutProps {
   children: React.ReactNode;
@@ -23,12 +21,36 @@ export function PageLayout({
   showBackButton = true,
 }: PageLayoutProps) {
   const router = useRouter();
+  const { collapsed } = useSidebar();
 
   return (
     <div className="min-h-screen flex bg-background">
       <Sidebar />
       <div className="flex-1 flex flex-col">
-        <header className="h-16 border-b bg-card flex items-center">
+        <header className="h-16 border-b bg-background flex items-center">
+          <div className={`${collapsed ? "w-[350px]" : "w-0"} overflow-hidden`}>
+            {/* 
+            <div className="flex flex-col h-full">
+              <h2 className="text-lg font-extrabold bg-black text-white leading-tight whitespace-nowrap px-2 py-1.5">
+                Health Transformation Review
+              </h2>
+              <p className="text-sm bg-gray-200 text-black text-center flex-1 flex items-center justify-center px-2 py-1.">
+                Where Policy Meets Innovation
+              </p>
+            </div>
+ */}
+
+            <div className="py-2">
+              <div className="flex flex-col flex-1">
+                <h2 className="text-lg font-extrabold bg-black text-white leading-tight whitespace-nowrap px-2 py-1">
+                  Health Transformation Review
+                </h2>
+                <p className="text-sm bg-gray-200 text-black text-center flex-1 flex items-center justify-center px-2 py-1">
+                  Where Policy Meets Innovation
+                </p>
+              </div>
+            </div>
+          </div>
           <div className="px-4 flex items-center justify-between w-full">
             <div className="flex items-center space-x-4">
               {showBackButton && (
