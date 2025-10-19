@@ -34,28 +34,19 @@ export function Sidebar() {
   return (
     <div
       className={cn(
-        "h-screen border-r bg-background transition-all duration-300",
-        collapsed ? "w-12" : "w-64"
+        "h-screen border-r bg-background transition-all duration-300 relative",
+        collapsed ? "w-12" : "w-72"
       )}
     >
       <div className="relative h-16 border-b">
         {!collapsed && (
-          <div className="flex items-center h-full px-4">
-            <div className="flex flex-col flex-1">
-              <h2 className="text-sm font-bold leading-tight whitespace-nowrap">Health Transformation Review</h2>
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-muted-foreground">Where Policy Meets Innovation</p>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setCollapsed(!collapsed)}
-                  aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-                  className="h-6 w-6 ml-2"
-                >
-                  <Menu className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
+          <div className="h-full flex flex-col">
+            <h2 className="text-lg font-extrabold bg-black text-white leading-tight whitespace-nowrap px-2 py-1">
+              Health Transformation Review
+            </h2>
+            <p className="text-sm bg-gray-200 text-black text-center flex-1 flex items-center justify-center">
+              Where Policy Meets Innovation
+            </p>
           </div>
         )}
         {collapsed && (
@@ -72,7 +63,21 @@ export function Sidebar() {
           </div>
         )}
       </div>
-      <nav className="space-y-1 p-2">
+      {!collapsed && (
+        <div className="absolute top-16 right-0 p-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setCollapsed(!collapsed)}
+            aria-label="Collapse sidebar"
+            className="h-6 w-6"
+          >
+            <Menu className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+      <nav className="space-y-1 p-1">
+        <div className="h-4"></div>
         {navItems.map((item) => (
           <NavItem
             key={item.href}
