@@ -35,15 +35,14 @@ export function Sidebar() {
     <div
       className={cn(
         "h-screen border-r bg-background transition-all duration-300",
-        collapsed ? "w-12" : "w-48"
+        collapsed ? "w-12" : "w-64"
       )}
     >
-      <div className="flex h-24 items-center justify-between px-3 border-b">
+      <div className="flex h-16 items-center justify-between px-3 border-b">
         {!collapsed && (
           <div className="flex flex-col">
-            <h2 className="text-xs font-bold leading-tight">Health Transformation</h2>
-            <h2 className="text-xs font-bold leading-tight">Review</h2>
-            <p className="text-xs text-muted-foreground mt-2">Where Policy Meets Innovation</p>
+            <h2 className="text-sm font-bold leading-tight whitespace-nowrap">Health Transformation Review</h2>
+            <p className="text-xs text-muted-foreground mt-1">Where Policy Meets Innovation</p>
           </div>
         )}
         <Button
