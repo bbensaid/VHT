@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PageLayout } from "@/components/page-layout";
 import { DocumentViewer } from "@/components/document-viewer";
 import { KeywordHighlighter } from "@/components/keyword-highlighter";
 import { NewsHeadlines } from "@/components/news-headlines";
-import { NewsArticle } from "@/components/news-article";
+import { DocumentSummary } from "@/components/document-summary";
 import { ResizableGrid } from "@/components/resizable-grid";
+import { getDocumentText } from "@/lib/storage/document-state";
 
 type NewsArticleData = {
   id: number;
@@ -17,8 +18,15 @@ type NewsArticleData = {
 };
 
 export default function Home() {
-  const [selectedArticle, setSelectedArticle] =
-    useState<NewsArticleData | null>(null);
+  const [selectedArticle, setSelectedArticle] = useState<NewsArticleData | null>(null);
+  const [documentText, setDocumentText] = useState<string>("");
+
+  useEffect(() => {
+    const savedText = getDocumentText();
+    if (savedText) {
+      setDocumentText(savedText);
+    }
+  }, []);
 
   return (
     <PageLayout title="Documents">
@@ -27,7 +35,7 @@ export default function Home() {
           <DocumentViewer />
           <KeywordHighlighter />
           <NewsHeadlines onArticleSelected={setSelectedArticle} />
-          <NewsArticle article={selectedArticle} />
+          <DocumentSummary documentText={documentText} selectedArticle={selectedArticle} />
         </ResizableGrid>
       </div>
     </PageLayout>
