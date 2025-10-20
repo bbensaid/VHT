@@ -16,6 +16,7 @@ import { cn } from "@/lib/ui/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSidebar } from "@/contexts/sidebar-context";
+import { Brand } from "@/components/brand";
 
 export function Sidebar() {
   const { collapsed, toggleCollapsed } = useSidebar();
@@ -35,18 +36,13 @@ export function Sidebar() {
     <div
       className={cn(
         "h-screen border-r bg-background transition-all duration-300 relative",
-        collapsed ? "w-12" : "w-72"
+        collapsed ? "w-12" : "w-[16rem]"
       )}
     >
       <div className="relative h-16 border-b bg-background">
         {!collapsed && (
-          <div className="h-full flex flex-col items-center justify-center">
-            <h2 className="text-lg font-extrabold bg-black text-white leading-tight whitespace-nowrap px-2 py-1 w-full text-center">
-              Health Transformation Review
-            </h2>
-            <p className="text-sm bg-gray-200 text-black text-center py-1 px-2 w-full">
-              Where Policy Meets Innovation
-            </p>
+          <div className="flex justify-center items-center h-full">
+            <Brand />
           </div>
         )}
         {collapsed && (
