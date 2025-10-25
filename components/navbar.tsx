@@ -20,11 +20,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverContent } from "@/components/ui/popover";
 
 export function Navbar() {
   const { data: session, status } = useSession();
@@ -37,20 +33,18 @@ export function Navbar() {
       <div className="flex h-16 items-center px-4">
         <div className="flex-1 flex justify-end items-center">
           <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-              <div className="relative w-64 max-md:hidden">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Search documents, blog, comments..."
-                  className="w-full pl-8"
-                  aria-label="Global search"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onFocus={() => setOpen(true)}
-                />
-              </div>
-            </PopoverTrigger>
+            <div className="relative w-64 max-md:hidden">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search documents, blog, comments..."
+                className="w-full pl-8"
+                aria-label="Global search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onFocus={() => setOpen(true)}
+              />
+            </div>
             <PopoverContent className="w-64 p-0" align="end">
               <Command>
                 <CommandList>

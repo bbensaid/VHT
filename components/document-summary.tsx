@@ -10,7 +10,10 @@ interface DocumentSummaryProps {
   selectedArticle: any;
 }
 
-export function DocumentSummary({ documentText, selectedArticle }: DocumentSummaryProps) {
+export function DocumentSummary({
+  documentText,
+  selectedArticle,
+}: DocumentSummaryProps) {
   const [activeTab, setActiveTab] = useState("article");
   const [summary, setSummary] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -32,14 +35,20 @@ export function DocumentSummary({ documentText, selectedArticle }: DocumentSumma
       });
 
       if (!response.ok) {
-        throw new Error("Failed to generate summary");
+        const errorData = await response.json();
+        throw new Error(
+          errorData.details || errorData.error || "Failed to generate summary"
+        );
       }
 
       const data = await response.json();
       setSummary(data.summary);
     } catch (error) {
       console.error("Error generating summary:", error);
-      setSummary("Failed to generate summary. Please try again.");
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error occurred";
+      console.log("Detailed error:", errorMessage);
+      setSummary(`Failed to generate summary: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }
@@ -58,17 +67,11 @@ export function DocumentSummary({ documentText, selectedArticle }: DocumentSumma
           <TabsTrigger value="summary">Document Summary</TabsTrigger>
         </TabsList>
 
-        <TabsContent
-          value="article"
-          className="flex-1 overflow-auto"
-        >
+        <TabsContent value="article" className="flex-1 overflow-auto">
           <NewsArticle article={selectedArticle} />
         </TabsContent>
 
-        <TabsContent
-          value="summary"
-          className="flex-1 overflow-auto relative"
-        >
+        <TabsContent value="summary" className="flex-1 overflow-auto relative">
           <div className="absolute inset-0 flex flex-col p-4">
             {!summary && !isLoading && (
               <div className="flex flex-col items-center justify-center flex-1 gap-4">

@@ -18,7 +18,8 @@ type NewsArticleData = {
 };
 
 export default function Home() {
-  const [selectedArticle, setSelectedArticle] = useState<NewsArticleData | null>(null);
+  const [selectedArticle, setSelectedArticle] =
+    useState<NewsArticleData | null>(null);
   const [documentText, setDocumentText] = useState<string>("");
 
   useEffect(() => {
@@ -35,7 +36,10 @@ export default function Home() {
           <DocumentViewer />
           <KeywordHighlighter />
           <NewsHeadlines onArticleSelected={setSelectedArticle} />
-          <DocumentSummary documentText={documentText} selectedArticle={selectedArticle} />
+          <DocumentSummary
+            documentText={documentText}
+            selectedArticle={selectedArticle}
+          />
         </ResizableGrid>
       </div>
     </PageLayout>
