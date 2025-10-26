@@ -55,18 +55,17 @@ ${truncatedText}`;
       return new Response(JSON.stringify({ summary }), {
         headers: { "Content-Type": "application/json" },
       });
-    } catch (error: any) {
-      console.error("Detailed Gemini API error:", {
-        message: error.message,
-        details: error.details,
-        stack: error.stack,
-      });
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error("Detailed Gemini API error:", {
+          message: error.message,
+          stack: error.stack,
+        });
+      } else {
+        console.error("Unknown error:", error);
+      }
       throw error;
     }
-
-    return new Response(JSON.stringify({ summary }), {
-      headers: { "Content-Type": "application/json" },
-    });
   } catch (error) {
     console.error("Error generating summary:", error);
     return new Response(

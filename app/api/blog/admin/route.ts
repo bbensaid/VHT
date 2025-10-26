@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { BlogService } from "@/services/blog-service";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import GoogleProvider from "next-auth/providers/google";
-import prisma from "@/lib/database/prisma";
+import prisma from "@/lib/prisma";
 
 const authOptions = {
   providers: [

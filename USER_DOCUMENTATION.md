@@ -356,9 +356,9 @@ The application uses a three-panel layout:
 - **Training Materials**: Updated documentation and tutorials
 - **Support Resources**: Help articles for new features
 
----
+### Documentation Updates
 
-_This user documentation is regularly updated. Last updated: October 17, 2025_
+The user documentation is regularly updated. Last updated: October 17, 2025.
 
 ## Quick Start Checklist
 

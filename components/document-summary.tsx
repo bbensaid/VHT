@@ -5,9 +5,16 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NewsArticle } from "@/components/news-article";
 
+export interface Article {
+  title: string;
+  content: string;
+  date?: string;
+  author?: string;
+}
+
 interface DocumentSummaryProps {
   documentText: string;
-  selectedArticle: any;
+  selectedArticle: Article;
 }
 
 export function DocumentSummary({

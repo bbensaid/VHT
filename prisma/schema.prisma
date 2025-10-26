@@ -10,6 +10,29 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Podcast {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  audioUrl    String
+  duration    Int      // Duration in seconds
+  imageUrl    String?  // Optional thumbnail image
+  episodeNumber Int?   // Optional episode number
+  season      Int?     // Optional season number
+  published   Boolean  @default(true)
+  publishedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  author      String?
+  tags        String[] // Array of tags
+  downloads   Int      @default(0)
+  likes       Int      @default(0)
+  transcriptUrl String? // Optional URL to episode transcript
+
+  @@index([publishedAt])
+  @@index([episodeNumber])
+}
+
 model Keyword {
   id         String   @id @default(uuid())
   term       String   @unique

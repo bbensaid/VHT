@@ -1,10 +1,11 @@
 "use client";
 
-import { Search, ChevronDown } from "lucide-react";
+import { Search, ChevronDown, ChevronLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { useSession, signIn, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,31 +21,58 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Popover, PopoverContent } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
-export function Navbar() {
+interface NavbarProps {
+  showBackButton?: boolean;
+  title?: string;
+}
+
+export function Navbar({ showBackButton = true, title }: NavbarProps) {
+  const router = useRouter();
   const { data: session, status } = useSession();
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
   const { results, isLoading } = useGlobalSearch(query);
 
   return (
-    <header className="border-b bg-background">
+    <header className="h-16 border-b bg-background">
       <div className="flex h-16 items-center px-4">
-        <div className="flex-1 flex justify-end items-center">
+        <div className="flex items-center space-x-4">
+          {showBackButton && (
+            <Button variant="outline" onClick={() => router.back()}>
+              <ChevronLeft className="mr-2 h-4 w-4" />
+              Back
+            </Button>
+          )}
+
+          <Button variant="outline" asChild>
+            <Link href="/">Home</Link>
+          </Button>
+
+          {title && <h1 className="text-xl font-semibold">{title}</h1>}
+        </div>
+
+        <div className="ml-auto flex items-center gap-4">
           <Popover open={open} onOpenChange={setOpen}>
-            <div className="relative w-64 max-md:hidden">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search documents, blog, comments..."
-                className="w-full pl-8"
-                aria-label="Global search"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onFocus={() => setOpen(true)}
-              />
-            </div>
+            <PopoverTrigger asChild>
+              <div className="relative w-64 max-md:hidden">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search documents, blog, comments..."
+                  className="w-full pl-8"
+                  aria-label="Global search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onFocus={() => setOpen(true)}
+                />
+              </div>
+            </PopoverTrigger>
             <PopoverContent className="w-64 p-0" align="end">
               <Command>
                 <CommandList>
@@ -86,20 +114,26 @@ export function Navbar() {
             </PopoverContent>
           </Popover>
 
-          {session && (
-            <Button asChild variant="outline">
-              <Link href="/blog/admin">Blog Admin</Link>
-            </Button>
-          )}
-
           {status === "loading" ? (
             <Button variant="outline" disabled>
               Loading...
             </Button>
           ) : session ? (
-            <Button variant="outline" onClick={() => signOut()}>
-              Sign Out
-            </Button>
+            <>
+              {session.user?.email?.endsWith("@vht.com") && (
+                <>
+                  <Button asChild variant="outline">
+                    <Link href="/blog/admin">Blog Admin</Link>
+                  </Button>
+                  <Button asChild variant="outline">
+                    <Link href="/admin">Admin Dashboard</Link>
+                  </Button>
+                </>
+              )}
+              <Button variant="outline" onClick={() => signOut()}>
+                Sign Out
+              </Button>
+            </>
           ) : (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -118,10 +152,6 @@ export function Navbar() {
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-
-          <Button asChild variant="outline">
-            <Link href="/admin">Admin Dashboard</Link>
-          </Button>
         </div>
       </div>
     </header>

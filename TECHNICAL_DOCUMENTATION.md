@@ -17,7 +17,7 @@ The VHT (Vermont Healthcare Transformation) application is a comprehensive web p
 
 ### Project Structure
 
-```
+```plaintext
 vht/
 ├── app/                          # Next.js App Router
 │   ├── api/                      # API routes
@@ -454,6 +454,8 @@ model Keyword {
 - **Documentation**: Expand API documentation
 - **Performance**: Implement caching strategies
 
----
+### Documentation Maintenance
 
-_This documentation is maintained alongside the codebase. Last updated: October 17, 2025_
+This documentation is maintained alongside the codebase.
+
+Last updated: October 17, 2025

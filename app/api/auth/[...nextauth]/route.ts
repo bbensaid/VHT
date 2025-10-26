@@ -1,7 +1,7 @@
 import NextAuth from "next-auth";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import GoogleProvider from "next-auth/providers/google";
-import prisma from "@/lib/database/prisma";
+import prisma from "@/lib/prisma";
 
 const handler = NextAuth({
   providers: [
@@ -12,6 +12,19 @@ const handler = NextAuth({
   ],
   adapter: PrismaAdapter(prisma),
   secret: process.env.NEXTAUTH_SECRET,
+  session: {
+    strategy: "jwt",
+  },
+  callbacks: {
+    async session({ session, token }) {
+      console.log('Session Callback:', { session, token });
+      return session;
+    },
+    async jwt({ token, user, account }) {
+      console.log('JWT Callback:', { token, user, account });
+      return token;
+    },
+  },
 });
 
 export { handler as GET, handler as POST };

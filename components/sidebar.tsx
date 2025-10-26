@@ -9,6 +9,8 @@ import {
   Menu,
   MessageSquare,
   Newspaper,
+  Headphones,
+  Film,
   type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,6 +31,8 @@ export function Sidebar() {
     { icon: BarChart, label: "Analytics", href: "/analytics" },
     { icon: MessageSquare, label: "Comments", href: "/comments" },
     { icon: Newspaper, label: "Blog", href: "/blog" },
+    { icon: Headphones, label: "Podcasts", href: "/podcasts" },
+    { icon: Film, label: "Videos", href: "/videos" },
     { icon: Settings, label: "Settings", href: "/settings" },
   ];
 
@@ -39,9 +43,9 @@ export function Sidebar() {
         collapsed ? "w-12" : "w-[16rem]"
       )}
     >
-      <div className="relative h-16 border-b bg-background">
+      <div className="relative">
         {!collapsed && (
-          <div className="flex justify-center items-center h-full">
+          <div className="flex justify-center items-center">
             <Brand />
           </div>
         )}
@@ -73,7 +77,7 @@ export function Sidebar() {
         </div>
       )}
       <nav className="space-y-1 p-1">
-        <div className="h-4"></div>
+        <div className="h-40"></div>
         {navItems.map((item) => (
           <NavItem
             key={item.href}

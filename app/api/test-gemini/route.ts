@@ -1,7 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextRequest } from "next/server";
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
     console.log("Testing Gemini API connection...");
     console.log("API Key exists:", !!process.env.GOOGLE_AI_API_KEY);
