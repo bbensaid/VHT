@@ -71,7 +71,7 @@ ${truncatedText}`;
     return new Response(
       JSON.stringify({
         error: "Failed to generate summary",
-        details: error instanceof Error ? error.message : "Unknown error",
+        details: error instanceof Error ? error.message : "An unknown error occurred.",
       }),
       {
         status: 500,

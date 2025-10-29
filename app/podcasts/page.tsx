@@ -76,6 +76,9 @@ export default function PodcastsPage() {
             <Home className="mr-2 h-4 w-4" />
             Home
           </Button>
+          <Button variant="outline" onClick={() => router.push('/podcast/admin')}>
+            Admin
+          </Button>
         </div>
       </div>
 

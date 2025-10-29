@@ -122,3 +122,20 @@ model VerificationToken {
   @@map("verificationtokens")
 }
 
+model Video {
+  id          String   @id @default(uuid())
+  title       String
+  description String
+  videoUrl    String
+  thumbnailUrl String?
+  duration    Int?      // Duration in seconds
+  published   Boolean  @default(true)
+  publishedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  author      String?
+  tags        String[]
+
+  @@index([publishedAt])
+}
+

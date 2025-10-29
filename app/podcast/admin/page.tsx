@@ -1,14 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/comp    } catch (_err) {
-      toast({
-        title: "Error",
-        description: "Failed to delete podcast",
-        variant: "destructive",
-      });
-    }
-  };ort { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -149,43 +143,26 @@ export default function PodcastAdminPage() {
 
     setUploading(true);
     try {
-      // First, upload the audio file
-      const audioFormData = new FormData();
-      audioFormData.append("file", audioFile);
-      const audioRes = await fetch("/api/upload/audio", {
-        method: "POST",
-        body: audioFormData,
-      });
-      const { audioUrl } = await audioRes.json();
-
-      // If there's an image, upload it
-      let imageUrl = null;
+      const formDataToSend = new FormData();
+      formDataToSend.append('audio', audioFile);
+      formDataToSend.append('title', formData.title);
+      formDataToSend.append('description', formData.description);
+      formDataToSend.append('author', formData.author);
+      formDataToSend.append('season', formData.season);
+      formDataToSend.append('episodeNumber', formData.episodeNumber);
       if (imageFile) {
-        const imageFormData = new FormData();
-        imageFormData.append("file", imageFile);
-        const imageRes = await fetch("/api/upload/image", {
-          method: "POST",
-          body: imageFormData,
-        });
-        const result = await imageRes.json();
-        imageUrl = result.imageUrl;
+        formDataToSend.append('image', imageFile);
       }
 
-      // Create the podcast entry
-      const podcastData = {
-        ...formData,
-        audioUrl,
-        imageUrl,
-        duration: 0, // We'll update this after processing
-      };
-
-      const res = await fetch("/api/podcasts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(podcastData),
+      const res = await fetch('/api/podcasts/upload', {
+        method: 'POST',
+        body: formDataToSend,
       });
 
-      if (!res.ok) throw new Error("Failed to create podcast");
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to upload podcast');
+      }
 
       // Reset form
       setFormData({
@@ -197,9 +174,20 @@ export default function PodcastAdminPage() {
       });
       setAudioFile(null);
       setImageFile(null);
+
+      toast({
+        title: "Success",
+        description: "Podcast uploaded successfully",
+      });
+
+      fetchPodcasts(); // Refresh the list of podcasts
     } catch (error) {
       console.error("Error uploading podcast:", error);
-      alert("Failed to upload podcast. Please try again.");
+      toast({
+        title: "Error",
+        description: (error as Error).message || "Failed to upload podcast. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setUploading(false);
     }

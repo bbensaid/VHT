@@ -5,16 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NewsArticle } from "@/components/news-article";
 
-export interface Article {
+interface NewsArticleData {
+  id: number;
   title: string;
-  content: string;
-  date?: string;
-  author?: string;
+  date: string;
+  source: string;
+  summary: string;
 }
 
 interface DocumentSummaryProps {
   documentText: string;
-  selectedArticle: Article;
+  selectedArticle: NewsArticleData | null;
 }
 
 export function DocumentSummary({
