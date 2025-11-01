@@ -1,6 +1,6 @@
 
 import { NextResponse } from 'next/server';
-import { createVideo } from '@/services/video-service';
+import { VideoService } from '@/services/video-service';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     console.log('Saving video metadata:', videoData);
 
     // Save video metadata to the database
-    const video = await createVideo(videoData);
+    const video = await VideoService.createVideo(videoData);
     console.log('Video metadata saved:', video);
 
     return NextResponse.json(video);

@@ -46,6 +46,8 @@ type Keyword = {
   definition: string;
 };
 
+import { PageLayout } from "@/components/page-layout";
+
 const AdminPage = () => {
   const router = useRouter();
   const { toast } = useToast();
@@ -229,21 +231,7 @@ const AdminPage = () => {
   };
 
   return (
-    <div className="container mx-auto py-10">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => router.back()}>
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-          <Button variant="outline" onClick={() => router.push("/")}>
-            <Home className="mr-2 h-4 w-4" />
-            Home
-          </Button>
-        </div>
-      </div>
-
+    <PageLayout title="Admin Dashboard">
       <div className="mb-5 flex justify-between items-center">
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
@@ -359,7 +347,7 @@ const AdminPage = () => {
           </TableBody>
         </Table>
       )}
-    </div>
+    </PageLayout>
   );
 };
 

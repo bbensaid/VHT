@@ -1,6 +1,6 @@
 
 import { NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { PodcastService } from '@/services/podcast-service';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 
@@ -34,14 +34,12 @@ export async function POST(request: Request) {
     const duration = data.get('duration') ? parseInt(data.get('duration') as string, 10) : 0;
 
     // Save podcast metadata to the database
-    const podcast = await prisma.podcast.create({
-      data: {
-        title,
-        description,
-        audioUrl,
-        duration,
-        // Add other fields as necessary
-      },
+    const podcast = await PodcastService.createPodcast({
+      title,
+      description,
+      audioUrl,
+      duration,
+      // Add other fields as necessary
     });
 
     return NextResponse.json(podcast);

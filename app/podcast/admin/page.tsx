@@ -49,6 +49,8 @@ interface Podcast {
   publishedAt: string;
 }
 
+import { PageLayout } from "@/components/page-layout";
+
 export default function PodcastAdminPage() {
   const [uploading, setUploading] = useState(false);
   const [audioFile, setAudioFile] = useState<File | null>(null);
@@ -194,7 +196,7 @@ export default function PodcastAdminPage() {
   };
 
   return (
-    <div className="container mx-auto p-6">
+    <PageLayout title="Podcast Admin">
       <Tabs defaultValue="upload" className="space-y-6">
         <TabsList>
           <TabsTrigger value="upload">Upload New</TabsTrigger>
@@ -315,7 +317,7 @@ export default function PodcastAdminPage() {
                     <>
                       <Upload className="w-4 h-4 mr-2" />
                       Upload Podcast
-                    </>
+                    </کاروں
                   )}
                 </Button>
               </form>
@@ -454,6 +456,6 @@ export default function PodcastAdminPage() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+    </PageLayout>
   );
 }

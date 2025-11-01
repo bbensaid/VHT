@@ -1,18 +1,34 @@
 
 import prisma from '@/lib/prisma';
+import type { Video } from '@prisma/client';
 
-export async function getVideos() {
-  return await prisma.video.findMany();
-}
+export class VideoService {
+  static async getVideos(): Promise<Video[]> {
+    return prisma.video.findMany({
+      orderBy: { publishedAt: 'desc' },
+    });
+  }
 
-export async function createVideo(data: {
-  title: string;
-  description: string;
-  videoUrl: string;
-  thumbnailUrl?: string;
-  duration?: number;
-  author?: string;
-  tags?: string[];
-}) {
-  return await prisma.video.create({ data });
+  static async getVideoById(id: string): Promise<Video | null> {
+    return prisma.video.findUnique({
+      where: { id },
+    });
+  }
+
+  static async createVideo(data: Omit<Video, 'id' | 'createdAt' | 'updatedAt'>): Promise<Video> {
+    return prisma.video.create({ data });
+  }
+
+  static async updateVideo(id: string, data: Partial<Video>): Promise<Video> {
+    return prisma.video.update({
+      where: { id },
+      data,
+    });
+  }
+
+  static async deleteVideo(id: string): Promise<void> {
+    await prisma.video.delete({
+      where: { id },
+    });
+  }
 }

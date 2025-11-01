@@ -8,6 +8,9 @@ import { ChevronLeft, Home, Upload } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 
+import { MediaGrid } from "@/components/media-grid";
+import { PageLayout } from "@/components/page-layout";
+
 interface Video {
   id: string;
   title: string;
@@ -58,25 +61,7 @@ export default function VideosPage() {
   };
 
   return (
-    <div className="container mx-auto py-8">
-      {/* Navigation */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={() => router.back()}>
-            <ChevronLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-          <Button variant="outline" onClick={() => router.push('/')}>
-            <Home className="mr-2 h-4 w-4" />
-            Home
-          </Button>
-          <Button variant="outline" onClick={() => router.push('/videos/admin')}>
-            <Upload className="mr-2 h-4 w-4" />
-            Upload Video
-          </Button>
-        </div>
-      </div>
-
+    <PageLayout title="Videos">
       {/* Selected Video Player */}
       {selectedVideo && (
         <Card className="mb-8">
@@ -117,8 +102,9 @@ export default function VideosPage() {
             ) : videos.length === 0 ? (
               <div className="text-center py-8">No videos available</div>
             ) : (
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {videos.map((video) => (
+              <MediaGrid
+                items={videos}
+                renderItem={(video) => (
                   <Card
                     key={video.id}
                     className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
@@ -144,12 +130,12 @@ export default function VideosPage() {
                       )}
                     </CardContent>
                   </Card>
-                ))}
-              </div>
+                )}
+              />
             )}
           </CardContent>
         </Card>
       )}
-    </div>
+    </PageLayout>
   );
 }

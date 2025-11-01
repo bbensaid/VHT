@@ -9,6 +9,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/use-toast"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 
+import { PageLayout } from "@/components/page-layout";
+
 export default function VideoAdminPage() {
   const [loading, setLoading] = React.useState(false)
   const { toast } = useToast()
@@ -62,7 +64,7 @@ export default function VideoAdminPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <PageLayout title="Upload Video">
       <Card className="w-full max-w-3xl mx-auto">
         <CardHeader>
           <CardTitle>Upload New Video</CardTitle>
@@ -130,6 +132,6 @@ export default function VideoAdminPage() {
           </form>
         </CardContent>
       </Card>
-    </div>
+    </PageLayout>
   )
 }

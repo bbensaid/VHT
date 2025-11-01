@@ -1,10 +1,10 @@
 
 import { NextResponse } from 'next/server';
-import { getVideos } from '@/services/video-service';
+import { VideoService } from '@/services/video-service';
 
 export async function GET() {
   try {
-    const videos = await getVideos();
+    const videos = await VideoService.getVideos();
     return NextResponse.json(videos);
   } catch (error) {
     console.error('Failed to fetch videos:', error);

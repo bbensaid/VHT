@@ -1,10 +1,10 @@
 
 import { NextResponse } from 'next/server';
-import { getPodcasts } from '@/services/podcast-service';
+import { PodcastService } from '@/services/podcast-service';
 
 export async function GET() {
   try {
-    const podcasts = await getPodcasts();
+    const podcasts = await PodcastService.getPodcasts();
     return NextResponse.json(podcasts);
   } catch (error) {
     console.error('Failed to fetch podcasts:', error);

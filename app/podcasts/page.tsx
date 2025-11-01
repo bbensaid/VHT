@@ -9,6 +9,9 @@ import { useToast } from "@/components/ui/use-toast";
 import { ChevronLeft, Home } from "lucide-react";
 import { useRouter } from "next/navigation";
 
+import { MediaGrid } from "@/components/media-grid";
+import { PageLayout } from "@/components/page-layout";
+
 interface Podcast {
   id: string;
   title: string;
@@ -64,24 +67,7 @@ export default function PodcastsPage() {
   const [selectedPodcast, setSelectedPodcast] = useState<Podcast | null>(null);
 
   return (
-    <div className="container mx-auto py-8">
-      {/* Navigation */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center space-x-4">
-          <Button variant="outline" onClick={() => router.back()}>
-            <ChevronLeft className="mr-2 h-4 w-4" />
-            Back
-          </Button>
-          <Button variant="outline" onClick={() => router.push('/')}>
-            <Home className="mr-2 h-4 w-4" />
-            Home
-          </Button>
-          <Button variant="outline" onClick={() => router.push('/podcast/admin')}>
-            Admin
-          </Button>
-        </div>
-      </div>
-
+    <PageLayout title="Podcasts">
       {/* Selected Podcast Player */}
       {selectedPodcast && (
         <Card className="mb-8">
@@ -132,8 +118,9 @@ export default function PodcastsPage() {
             ) : podcasts.length === 0 ? (
               <div className="text-center py-8">No podcasts available</div>
             ) : (
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {podcasts.map((podcast) => (
+              <MediaGrid
+                items={podcasts}
+                renderItem={(podcast) => (
                   <Card
                     key={podcast.id}
                     className="overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
@@ -164,12 +151,12 @@ export default function PodcastsPage() {
                       </div>
                     </CardContent>
                   </Card>
-                ))}
-              </div>
+                )}
+              />
             )}
           </CardContent>
         </Card>
       )}
-    </div>
+    </PageLayout>
   );
 }
