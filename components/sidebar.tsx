@@ -43,7 +43,7 @@ export function Sidebar() {
         collapsed ? "w-12" : "w-[16rem]"
       )}
     >
-      <div className="relative">
+      <div className="relative border-b">
         {!collapsed && (
           <div className="flex justify-center items-center">
             <Brand />
@@ -64,7 +64,7 @@ export function Sidebar() {
         )}
       </div>
       {!collapsed && (
-        <div className="absolute top-16 right-0 p-1">
+        <div className="absolute top-2 right-2 p-1">
           <Button
             variant="ghost"
             size="icon"
@@ -76,8 +76,7 @@ export function Sidebar() {
           </Button>
         </div>
       )}
-      <nav className="space-y-1 p-1">
-        <div className="h-40"></div>
+      <nav className="space-y-1 p-1 mt-8">
         {navItems.map((item) => (
           <NavItem
             key={item.href}

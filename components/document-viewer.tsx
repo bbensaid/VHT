@@ -203,10 +203,15 @@ export function DocumentViewer() {
       const script = document.createElement("script");
       script.src =
         "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js";
+      // Updated to a newer stable version of PDF.js
+      script.src =
+        "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.min.mjs";
+      script.type = "module";
       script.async = true;
       script.onload = () => {
         window.pdfjsLib.GlobalWorkerOptions.workerSrc =
           "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.4.168/pdf.worker.min.mjs`;
         setPdfLoaded(true);
         console.log("PDF.js library loaded");
       };

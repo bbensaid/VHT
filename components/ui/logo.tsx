@@ -1,36 +1,13 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { Orbit } from "lucide-react";
 
-interface LogoProps {
-  className?: string;
-}
-
-export function Logo({ className }: LogoProps) {
+export function Logo() {
   return (
-    <div className={cn("flex items-center gap-4 pl-2", className)}>
-      {/* Text section with Tailwind color classes */}
-      <div className="flex flex-col">
-        <div className="flex flex-col">
-          <span
-            className="font-extrabold text-[22px] leading-tight tracking-tight"
-            style={{ color: "#1a365d" }}
-          >
-            Health Transformation
-          </span>
-          <span
-            className="font-extrabold text-[22px] leading-tight tracking-tight"
-            style={{ color: "#2c5282" }}
-          >
-            Review
-          </span>
-        </div>
-        <p
-          className="text-[13px] font-medium tracking-wide"
-          style={{ color: "#4a5568" }}
-        >
-          Where Policy Meets Innovation
-        </p>
+    <div className="flex items-center justify-center gap-3 px-4 pt-2 pb-2">
+      <div className="bg-white p-2 rounded-lg border border-[#609707]">
+        {/* <Rotate3d size={48} color="#324b0b" />  */}
+        <Orbit size={48} color="#609707" strokeWidth={3} />
       </div>
     </div>
   );
