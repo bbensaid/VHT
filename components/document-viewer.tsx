@@ -449,11 +449,13 @@ export function DocumentViewer() {
   return (
     <DocumentViewerContent>
       <div className="flex flex-col h-full">
-        <div className="flex items-center justify-center p-2 border-b">
-          <h3 className="font-medium absolute left-2">
+        <div className="flex items-center justify-between p-2 border-b relative">
+          {/* Use flex-1 and truncate to allow the title to take available space and not wrap */}
+          <h3 className="font-medium text-sm truncate pr-4">
             {documentName ? `Document: ${documentName}` : "Document Viewer"}
           </h3>
-          <div className="flex items-center gap-2">
+          {/* This div will now be pushed to the right */}
+          <div className="flex items-center gap-2 flex-shrink-0">
             <Button
               variant="outline"
               size="sm"
