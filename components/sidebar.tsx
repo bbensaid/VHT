@@ -40,45 +40,29 @@ export function Sidebar() {
   return (
     <div
       className={cn(
-        "h-screen border-r bg-background transition-all duration-300 relative",
-        collapsed ? "w-12" : "w-[16rem]"
+        "h-screen border-r bg-background transition-all duration-300 relative flex flex-col",
+        collapsed ? "w-12" : "w-48 lg:w-56" // Made sidebar even narrower
       )}
     >
       <div className="relative border-b">
         {!collapsed && (
-          <div className="flex justify-center items-center">
+          <>
             <Brand />
-          </div>
-        )}
-        {!collapsed && (
-          <div className="absolute top-2 right-2 p-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => toggleCollapsed()}
-              aria-label="Collapse sidebar"
-              className="h-6 w-6"
-            >
-              <Menu className="h-4 w-4" />
-            </Button>
-          </div>
+          </>
         )}
         {collapsed && (
-          <div className="flex flex-col items-center justify-center py-2">
+          <div className="flex items-center justify-center p-3">
+            {/* p-3 matches the main header padding for alignment */}
             <Logo />
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => toggleCollapsed()}
-              aria-label="Expand sidebar"
-              className="h-6 w-6 mt-2"
-            >
-              <Menu className="h-4 w-4" />
-            </Button>
           </div>
         )}
       </div>
-      <nav className="space-y-1 p-1 mt-2">
+      <div className="flex justify-end p-1">
+        <Button variant="ghost" size="icon" onClick={toggleCollapsed}>
+          <Menu className="h-4 w-4" />
+        </Button>
+      </div>
+      <nav className="flex-1 space-y-1 p-1">
         {navItems.map((item) => (
           <NavItem
             key={item.href}
