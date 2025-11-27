@@ -1,11 +1,10 @@
 "use client";
 
 import { Logo } from "@/components/ui/logo";
-import { cn } from "@/lib/utils";
 
 export function Brand() {
   return (
-    <div className="flex w-full flex-col items-center justify-center px-2 pb-2">
+    <div className="flex w-full flex-col items-center justify-center p-2">
       <Logo />
       <div className="text-center">
         <h1 className="text-xl font-bold tracking-tight text-[#3e6204]">

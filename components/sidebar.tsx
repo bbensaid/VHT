@@ -13,6 +13,7 @@ import {
   Film,
   type LucideIcon,
 } from "lucide-react";
+import { Logo } from "@/components/ui/logo";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/ui/utils";
 import Link from "next/link";
@@ -49,34 +50,35 @@ export function Sidebar() {
             <Brand />
           </div>
         )}
-        {collapsed && (
-          <div className="flex justify-center items-center h-full">
+        {!collapsed && (
+          <div className="absolute top-2 right-2 p-1">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => toggleCollapsed()}
-              aria-label="Expand sidebar"
+              aria-label="Collapse sidebar"
               className="h-6 w-6"
             >
               <Menu className="h-4 w-4" />
             </Button>
           </div>
         )}
+        {collapsed && (
+          <div className="flex flex-col items-center justify-center py-2">
+            <Logo />
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => toggleCollapsed()}
+              aria-label="Expand sidebar"
+              className="h-6 w-6 mt-2"
+            >
+              <Menu className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
       </div>
-      {!collapsed && (
-        <div className="absolute top-2 right-2 p-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => toggleCollapsed()}
-            aria-label="Collapse sidebar"
-            className="h-6 w-6"
-          >
-            <Menu className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
-      <nav className="space-y-1 p-1 mt-8">
+      <nav className="space-y-1 p-1 mt-2">
         {navItems.map((item) => (
           <NavItem
             key={item.href}

@@ -1,13 +1,19 @@
 "use client";
 
-import { Orbit } from "lucide-react";
+import { Tangent } from "lucide-react";
 
 export function Logo() {
   return (
-    <div className="flex items-center justify-center gap-3 px-4 pt-2 pb-2">
-      <div className="bg-white p-2 rounded-lg border border-[#609707]">
+    <div className="flex items-center justify-center mb-2">
+      <div className="bg-white rounded-lg">
         {/* <Rotate3d size={48} color="#324b0b" />  */}
-        <Orbit size={48} color="#609707" strokeWidth={3} />
+        <Tangent
+          size={36}
+          color="#609707"
+          strokeWidth={2}
+          absoluteStrokeWidth
+          className="rotate-45"
+        />
       </div>
     </div>
   );
