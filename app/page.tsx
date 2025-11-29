@@ -8,6 +8,7 @@ import { NewsHeadlines } from "@/components/news-headlines";
 import { DocumentSummary } from "@/components/document-summary";
 import { ResizableGrid } from "@/components/resizable-grid";
 import { getDocumentText } from "@/lib/storage/document-state";
+import { WelcomeVideo } from "@/components/welcome-video";
 
 type NewsArticleData = {
   id: number;
@@ -21,13 +22,32 @@ export default function Home() {
   const [selectedArticle, setSelectedArticle] =
     useState<NewsArticleData | null>(null);
   const [documentText, setDocumentText] = useState<string>("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [showIntro, setShowIntro] = useState(false);
 
   useEffect(() => {
     const savedText = getDocumentText();
     if (savedText) {
       setDocumentText(savedText);
     }
+    const hasSeenIntro = localStorage.getItem("hasSeenIntro") === "true";
+    if (!hasSeenIntro) {
+      setShowIntro(true);
+    }
+    setIsLoading(false);
   }, []);
+
+  const handleSkipIntro = () => {
+    setShowIntro(false);
+  };
+
+  if (isLoading) {
+    return null; // Or a loading spinner
+  }
+
+  if (showIntro) {
+    return <WelcomeVideo onSkip={handleSkipIntro} />;
+  }
 
   return (
     <PageLayout title="Documents">
